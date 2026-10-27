@@ -3,3 +3,152 @@ title: "LN"
 output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, fig.width = 8, fig.height = 5)
+library(tidyverse)
+
+# locate the raw data whether this file is knit from results/, scripts/drafts/, or the repo root
+raw_path <- c('data/biomarker-raw.csv',
+              '../data/biomarker-raw.csv',
+              '../../data/biomarker-raw.csv') %>%
+  keep(file.exists) %>%
+  first()
+stopifnot(!is.na(raw_path))
+```
+
+# Load raw data
+
+Same parsing as `preprocessing.R`, but **without** any transformation, scaling, or trimming.
+
+```{r load-raw}
+# protein names / abbreviations
+var_names <- read_csv(raw_path, col_names = F, n_max = 2,
+                      col_select = -(1:2)) %>%
+  t() %>%
+  as_tibble() %>%
+  rename(name = V1,
+         abbreviation = V2) %>%
+  na.omit()
+
+# raw (untransformed) protein levels, one row per subject
+biomarker_raw <- read_csv(raw_path, skip = 2, col_select = -2L, 
+                          col_names = c('group', 'empty',
+                                        pull(var_names, abbreviation), 'ados'),
+                          na = c('-', '')) %>%
+  filter(!is.na(group)) %>%
+  mutate(subject = row_number(), .before = 1) %>%
+  select(subject, group, ados, everything())
+
+protein_cols <- setdiff(names(biomarker_raw), c('subject', 'group', 'ados'))
+
+tibble(subjects = nrow(biomarker_raw),
+       proteins = length(protein_cols),
+       missing_values = sum(is.na(biomarker_raw[protein_cols])),
+       nonpositive_values = sum(biomarker_raw[protein_cols] <= 0, 
+                                na.rm = TRUE)) %>%
+  knitr::kable()
+
+biomarker_raw %>% count(group) %>% knitr::kable()
+```
+
+# 1.  What do you imagine is the reason for log-transforming the protein levels in `biomarker-raw.csv`? (Hint: look at the distribution of the raw values for a sample of proteins.)
+
+Looking at the distribution of raw values for a sample of proteins...
+
+## Raw vs. log distributions for a random sample of proteins
+
+```{r sample-proteins}
+set.seed(123)
+sample_proteins <- sample(protein_cols, 6)
+
+sample_long <- biomarker_raw %>%
+  select(subject, group, all_of(sample_proteins)) %>%
+  pivot_longer(-c(subject, group), names_to = 'protein', values_to = 'raw') %>%
+  mutate(log10 = log10(raw))
+```
+
+```{r hist-raw}
+ggplot(sample_long, aes(x = raw)) +
+  geom_histogram(bins = 30, fill = 'darkblue', color = 'white') +
+  facet_wrap(~ protein, scales = 'free') +
+  labs(title = 'Raw protein levels (6 random proteins)', x = 'raw level', 
+       y = 'count') +
+  theme_minimal()
+```
+
+```{r hist-log}
+ggplot(sample_long, aes(x = log10)) +
+  geom_histogram(bins = 30, fill = 'orangered', color = 'white') +
+  facet_wrap(~ protein, scales = 'free') +
+  labs(title = 'log protein levels (same 6 proteins)', x = 'log(level)', 
+       y = 'count') +
+  theme_minimal()
+```
+
+## Skewness across all proteins
+
+```{r skewness}
+skew <- function(x) {
+  x <- x[!is.na(x)]
+  mean((x - mean(x))^3) / (mean((x - mean(x))^2))^1.5
+}
+
+skew_tbl <- tibble(protein = protein_cols,
+                   raw = map_dbl(protein_cols, ~ skew(biomarker_raw[[.x]])),
+                   log10 = map_dbl(protein_cols, ~ 
+                                     skew(log10(biomarker_raw[[.x]]))))
+
+skew_tbl %>%
+  pivot_longer(-protein, names_to = 'scale', values_to = 'skewness') %>%
+  group_by(scale) %>%
+  summarize(median_skew = median(skewness),
+            pct_skew_gt_1 = 100 * mean(skewness > 1),
+            pct_abs_skew_lt_0.5 = 100 * mean(abs(skewness) < 0.5)) %>%
+  knitr::kable(digits = 2)
+
+skew_tbl %>%
+  pivot_longer(-protein, names_to = 'scale', values_to = 'skewness') %>%
+  mutate(scale = factor(scale, levels = c('raw', 'log10'))) %>%
+  ggplot(aes(x = skewness, fill = scale)) +
+  geom_histogram(bins = 50, position = 'identity', alpha = 0.6, 
+                 color = 'white') +
+  geom_vline(xintercept = 0, linetype = 'dashed') +
+  labs(title = paste0('Skewness of each protein (', length(protein_cols), 
+                      ' proteins), before and after log10'),
+       x = 'sample skewness', y = 'number of proteins') +
+  theme_minimal()
+```
+
+## Scale differences between proteins
+
+```{r scale-range}
+protein_medians <- tibble(protein = protein_cols,
+                          median_raw = map_dbl(protein_cols,
+                                               ~ median(biomarker_raw[[.x]], 
+                                                        na.rm = TRUE)))
+
+ggplot(protein_medians, aes(x = median_raw)) +
+  geom_histogram(bins = 40, fill = 'grey40', color = 'white') +
+  scale_x_log10() +
+  labs(title = 'Median raw level of each protein (log-scaled x axis)',
+       x = 'median raw level', y = 'number of proteins') +
+  theme_minimal()
+```
+
+
+## Major Takeaways
+
+```{r task1-numbers, include=FALSE}
+med_raw  <- median(skew_tbl$raw)
+med_log  <- median(skew_tbl$log10)
+pct_raw  <- 100 * mean(skew_tbl$raw > 1)
+pct_log  <- 100 * mean(skew_tbl$log10 > 1)
+```
+
+Raw protein levels are strongly right-skewed: the median skewness across proteins is `r round(med_raw, 2)` on the raw scale vs. `r round(med_log, 2)` after a log transform, and `r round(pct_raw)`% of proteins have skewness above 1 on the raw scale vs. `r round(pct_log)`% after the transform. 
+
+A handful of very large values dominate each raw distribution. This is typical of concentration/intensity measurements, where variation is multiplicative (e.g., a fold change) rather than additive. Taking logs turns multiplicative variation into additive variation and pulls in the long right tail, which suits the methods used downstream (t-tests, which assume roughly normal data; logistic regression; and standardization, where the mean and SD would otherwise be inflated by a few extreme values). Proteins also differ in typical level by several orders of magnitude, so a common scale is needed before they can be compared or used jointly, which is handled by centering and scaling.
+
+The log transform does not remove the skew entirely: a sizable share of proteins still have skewness above 1 on the log scale. 
+
+# 2. Temporarily remove the outlier trimming from preprocessing and do some exploratory analysis of the outlying values. Are there specific *subjects* (not values) that seem to be outliers? If so, are outliers more frequent in one group or the other? (Hint: consider tabulating the number of outlying values per subject.)
