@@ -100,4 +100,4 @@ testing(biomarker_split) %>%
   add_predictions(fit, type = 'response') %>%
   class_metrics(estimate = factor(pred > 0.5),
               truth = factor(class), pred,
-              event_level = 'second')
+              event_level = 'second') 
