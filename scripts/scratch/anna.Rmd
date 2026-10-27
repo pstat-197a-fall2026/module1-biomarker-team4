@@ -7,7 +7,7 @@ Experiment with the following modifications:
 
 How are results affected by each modification?
 
-## Training Partitions
+## Bullet Point 1: Training Partitions
 
 Repeat the analysis but carry out the entire selection procedure on a training partition -- in other words, set aside some testing data at the very beginning and don't use it until you are evaluating accuracy at the very end:
 
@@ -23,8 +23,7 @@ biomarker_test_question3 <- testing(biomarker_split_question3)
 ```
 
 
-## MULTIPLE TESTING
-####################
+#### MULTIPLE TESTING
 
 ```{r}
 
@@ -66,74 +65,8 @@ proteins_s1_3 <- ttests_out_3 %>%
 proteins_s1_3
 ```
 
-### Test Set
-```{r}
-ttests_test_3 <- biomarker_test_question3 %>%
-  select(group, all_of(proteins_s1_3)) %>%
-  pivot_longer(
-    cols = -group,
-    names_to = "protein",
-    values_to = "level"
-  ) %>%
-  nest(data = c(level, group)) %>%
-  mutate(ttest = map(data, test_fn)) %>%
-  unnest(ttest) %>%
-  arrange(p_value) %>%
-  mutate(
-    m = n(),
-    hm = log(m) + 1 / (2 * m) - digamma(1),
-    rank = row_number(),
-    p.adj = pmin(1, m * hm * p_value / rank))
 
-# View test-set results
-ttests_test_3
-
-
-
-
-# evaluate errors on test set
-class_metrics <- metric_set(sensitivity, 
-                            specificity, 
-                            accuracy,
-                            roc_auc)
-
-testing(biomarker_split) %>%
-  add_predictions(ttests_test_3, type = "response") %>%
-  mutate(
-    actual_class = factor(class, levels = c(FALSE, TRUE)),
-    predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
-  ) %>%
-  class_metrics(
-    truth = actual_class,
-    estimate = predicted_class,
-    pred,
-    event_level = "second"
-  )
-
-results_question3 <- testing(additional_biomarker_split) %>%
-  add_predictions(fit_question3, type = "response") %>%
-  mutate(
-    actual_class = factor(class, levels = c(FALSE, TRUE)),
-    predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
-  ) %>%
-  class_metrics(
-    truth = actual_class,
-    estimate = predicted_class, 
-    pred,
-    event_level = "second"
-  )
-
-results_question3
-
-
-```
-
-
-
-
-
-## RANDOM FOREST
-##################
+#### RANDOM FOREST
 
 ```{r}
 # store predictors and response separately
@@ -162,25 +95,61 @@ proteins_s2_3
 
 ```
 
+#### LOGISTIC REGRESSION
 
-## LOGISTIC REGRESSION
 ```{r}
-# select subset of interest
-proteins_sstar_question3 <- intersect(proteins_s1_3, proteins_s2_3)
 
-biomarker_sstar_question3 <- biomarker_clean %>%
-  select(group, any_of(proteins_sstar_question3)) %>%
+
+```
+
+
+## Bullet Point 2: Top Predictive Protiens
+
+Choose a larger number (more than ten) of top predictive proteins using each selection method:
+
+#### Multiple Tests with 20 top protiens
+
+```{r}
+
+#multiple tests
+
+proteins_s1_3_part2 <- ttests_out_3 %>%
+  slice_min(p.adj, n = 20) %>%
+  pull(protein)
+
+
+proteins_s1_3_part2
+
+```
+
+#### Random Forest with 20 top protiens
+
+```{r}
+#random forest
+
+proteins_s2_3_part2 <- rf_out_3$importance %>% 
+  as_tibble() %>%
+  mutate(protein = rownames(rf_out$importance)) %>%
+  slice_max(MeanDecreaseGini, n = 20) %>%
+  pull(protein)
+
+proteins_s2_3_part2
+
+```
+
+#### Logisitc Regression with 40 top protiens
+
+```{r}
+proteins_sstar_question3_part2 <- intersect(proteins_s1_3_part2, proteins_s2_3_part2)
+
+biomarker_sstar_question3_part2 <- biomarker_train_question3 %>%
+  select(group, any_of(proteins_sstar_question3_part2)) %>%
   mutate(class = (group == 'ASD')) %>%
   select(-group)
 
-# partition into training and test set
-set.seed(101422)
-additional_biomarker_split <- biomarker_sstar_question3 %>%
-  initial_split(prop = 0.8)
-
 # fit logistic regression model to training set
-fit_question3 <- glm(class ~ ., 
-           data = training(additional_biomarker_split), 
+fit_question3_part2 <- glm(class ~ ., 
+           data = biomarker_sstar_question3_part2, 
            family = 'binomial')
 
 # evaluate errors on test set
@@ -189,8 +158,8 @@ class_metrics <- metric_set(sensitivity,
                             accuracy,
                             roc_auc)
 
-testing(additional_biomarker_split) %>%
-  add_predictions(fit_question3, type = "response") %>%
+results_part2 <- testing(biomarker_split) %>%
+  add_predictions(fit_question3_part2, type = "response") %>%
   mutate(
     actual_class = factor(class, levels = c(FALSE, TRUE)),
     predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
@@ -202,28 +171,16 @@ testing(additional_biomarker_split) %>%
     event_level = "second"
   )
 
-results_question3 <- testing(additional_biomarker_split) %>%
-  add_predictions(fit_question3, type = "response") %>%
-  mutate(
-    actual_class = factor(class, levels = c(FALSE, TRUE)),
-    predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
-  ) %>%
-  class_metrics(
-    truth = actual_class,
-    estimate = predicted_class, 
-    pred,
-    event_level = "second"
-  )
+results_part2
 
-results_question3
+
+
+
+
 ```
 
 
-## Top Predictive Protiens
 
-Choose a larger number (more than ten) of top predictive proteins using each selection method:
-
-
-## Fuzzy Intersection
+## Bullet Point 3: Fuzzy Intersection
 
 Use a fuzzy intersection instead of a hard intersection to combine the sets of top predictive proteins across selection methods:
