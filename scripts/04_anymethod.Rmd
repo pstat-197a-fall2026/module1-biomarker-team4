@@ -1,5 +1,95 @@
----
-title: "04_anymethod"
-output: html_document
----
+```{r}
+library(tidyverse)
+library(tidymodels)
 
+# Load the processed data if it isn't already loaded
+load("data/biomarker-clean.RData")
+
+# Reproducible 80/20 train-test split
+set.seed(101422)
+
+split <- initial_split(
+  biomarker_clean,
+  prop = 0.8,
+  strata = group
+)
+
+train <- training(split)
+test  <- testing(split)
+
+# Identify the protein columns
+protein_names <- setdiff(
+  names(train),
+  c("group", "ados")
+)
+
+# Rank proteins using Welch's t-tests on TRAINING DATA ONLY
+protein_ranking <- map_dfr(protein_names, function(protein) {
+
+  test_result <- t.test(
+    train[[protein]][train$group == "ASD"],
+    train[[protein]][train$group == "TD"]
+  )
+
+  tibble(
+    protein = protein,
+    p_value = test_result$p.value
+  )
+}) %>%
+  arrange(p_value)
+
+# Function to fit and evaluate a model using the top k proteins
+evaluate_panel <- function(k) {
+
+  selected <- head(protein_ranking$protein, k)
+
+  # Fit logistic regression on training subjects
+  train_model <- train %>%
+    select(group, all_of(selected)) %>%
+    mutate(is_asd = as.integer(group == "ASD"))
+
+  model <- glm(
+    is_asd ~ . - group,
+    data = train_model,
+    family = binomial()
+  )
+
+  # Predict ASD probabilities for held-out test subjects
+  test_model <- test %>%
+    select(group, all_of(selected)) %>%
+    mutate(
+      truth = factor(group, levels = c("TD", "ASD")),
+      prob = predict(model, newdata = ., type = "response"),
+      predicted = factor(
+        if_else(prob >= 0.5, "ASD", "TD"),
+        levels = c("TD", "ASD")
+      )
+    )
+
+  tibble(
+    panel_size = k,
+    proteins = paste(selected, collapse = ", "),
+    accuracy = mean(test_model$predicted == test_model$truth),
+    sensitivity = mean(
+      test_model$predicted[test_model$truth == "ASD"] == "ASD"
+    ),
+    specificity = mean(
+      test_model$predicted[test_model$truth == "TD"] == "TD"
+    ),
+    AUROC = yardstick::roc_auc(
+      test_model,
+      truth = truth,
+      prob,
+      event_level = "second"
+    )$.estimate
+  )
+}
+
+# Compare different panel sizes
+simple_results <- map_dfr(
+  c(3, 5, 10),
+  evaluate_panel
+)
+
+print(simple_results)
+```
