@@ -66,6 +66,70 @@ proteins_s1_3 <- ttests_out_3 %>%
 proteins_s1_3
 ```
 
+### Test Set
+```{r}
+ttests_test_3 <- biomarker_test_question3 %>%
+  select(group, all_of(proteins_s1_3)) %>%
+  pivot_longer(
+    cols = -group,
+    names_to = "protein",
+    values_to = "level"
+  ) %>%
+  nest(data = c(level, group)) %>%
+  mutate(ttest = map(data, test_fn)) %>%
+  unnest(ttest) %>%
+  arrange(p_value) %>%
+  mutate(
+    m = n(),
+    hm = log(m) + 1 / (2 * m) - digamma(1),
+    rank = row_number(),
+    p.adj = pmin(1, m * hm * p_value / rank))
+
+# View test-set results
+ttests_test_3
+
+
+
+
+# evaluate errors on test set
+class_metrics <- metric_set(sensitivity, 
+                            specificity, 
+                            accuracy,
+                            roc_auc)
+
+testing(biomarker_split) %>%
+  add_predictions(ttests_test_3, type = "response") %>%
+  mutate(
+    actual_class = factor(class, levels = c(FALSE, TRUE)),
+    predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
+  ) %>%
+  class_metrics(
+    truth = actual_class,
+    estimate = predicted_class,
+    pred,
+    event_level = "second"
+  )
+
+results_question3 <- testing(additional_biomarker_split) %>%
+  add_predictions(fit_question3, type = "response") %>%
+  mutate(
+    actual_class = factor(class, levels = c(FALSE, TRUE)),
+    predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
+  ) %>%
+  class_metrics(
+    truth = actual_class,
+    estimate = predicted_class, 
+    pred,
+    event_level = "second"
+  )
+
+results_question3
+
+
+```
+
+
+
 
 
 ## RANDOM FOREST
@@ -93,6 +157,8 @@ proteins_s2_3 <- rf_out_3$importance %>%
   mutate(protein = rownames(rf_out$importance)) %>%
   slice_max(MeanDecreaseGini, n = 10) %>%
   pull(protein)
+
+proteins_s2_3
 
 ```
 
