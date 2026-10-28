@@ -143,15 +143,4 @@ part4_cv_summary
 
 
 
-## 5. Final comparison
 
-After choosing the alternative using training data, fit both final models
-on the training set and evaluate on the same reserved test set. Report panel
-size, accuracy, sensitivity, specificity, and ROC AUC. Define what counts as
-comparable performance before inspecting final test results, and acknowledge
-uncertainty from a single split.
-
-## 6. Interpretation
-
-To complete after evaluation: identify whether the alternative meets the
-smaller-or-better objective. Do not assume an improvement before seeing results.
