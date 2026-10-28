@@ -1,0 +1,288 @@
+---
+title: "LN Polish"
+format: html
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, fig.width = 8, fig.height = 5)
+library(tidyverse)
+
+# locate the raw data whether this file is knit from results/, scripts/drafts/, or the repo root
+raw_path <- c('data/biomarker-raw.csv',
+              '../data/biomarker-raw.csv',
+              '../../data/biomarker-raw.csv') %>%
+  keep(file.exists) %>%
+  first()
+stopifnot(!is.na(raw_path))
+```
+
+Using the same parsing as `preprocessing.R`, but without any transformation, scaling, or trimming...
+
+```{r load-raw, include = FALSE}
+# Load raw data
+# Same parsing as preprocessing.R, but without any transformation, scaling, 
+# or trimming.
+
+# protein names / abbreviations
+var_names <- read_csv(raw_path, col_names = F, n_max = 2,
+                      col_select = -(1:2)) %>%
+  t() %>%
+  as_tibble() %>%
+  rename(name = V1,
+         abbreviation = V2) %>%
+  na.omit()
+
+# raw (untransformed) protein levels, one row per subject
+biomarker_raw <- read_csv(raw_path, skip = 2, col_select = -2L, 
+                          col_names = c('group', 'empty',
+                                        pull(var_names, abbreviation), 'ados'),
+                          na = c('-', '')) %>%
+  filter(!is.na(group)) %>%
+  mutate(subject = row_number(), .before = 1) %>%
+  select(subject, group, ados, everything())
+
+protein_cols <- setdiff(names(biomarker_raw), c('subject', 'group', 'ados'))
+
+tibble(subjects = nrow(biomarker_raw),
+       proteins = length(protein_cols),
+       missing_values = sum(is.na(biomarker_raw[protein_cols])),
+       nonpositive_values = sum(biomarker_raw[protein_cols] <= 0, 
+                                na.rm = TRUE)) %>%
+  knitr::kable()
+
+biomarker_raw %>% count(group) %>% knitr::kable()
+```
+
+## Raw vs. log distributions for a random sample of proteins
+
+Looking at the distribution of raw values for a sample of proteins...
+
+```{r sample-proteins, echo = FALSE}
+set.seed(123)
+sample_proteins <- sample(protein_cols, 6)
+
+sample_long <- biomarker_raw %>%
+  select(subject, group, all_of(sample_proteins)) %>%
+  pivot_longer(-c(subject, group), names_to = 'protein', values_to = 'raw') %>%
+  mutate(log10 = log10(raw))
+```
+
+```{r hist-raw, echo = FALSE}
+ggplot(sample_long, aes(x = raw)) +
+  geom_histogram(bins = 30, fill = 'darkblue', color = 'white') +
+  facet_wrap(~ protein, scales = 'free') +
+  labs(title = 'Raw protein levels (6 random proteins)', x = 'raw level', 
+       y = 'count') +
+  theme_minimal()
+```
+
+```{r hist-log, echo = FALSE}
+ggplot(sample_long, aes(x = log10)) +
+  geom_histogram(bins = 30, fill = 'orangered', color = 'white') +
+  facet_wrap(~ protein, scales = 'free') +
+  labs(title = 'log protein levels (same 6 proteins)', x = 'log(level)', 
+       y = 'count') +
+  theme_minimal()
+```
+
+## Skewness across all proteins
+
+```{r skewness, echo = FALSE}
+skew <- function(x) {
+  x <- x[!is.na(x)]
+  mean((x - mean(x))^3) / (mean((x - mean(x))^2))^1.5
+}
+
+skew_tbl <- tibble(protein = protein_cols,
+                   raw = map_dbl(protein_cols, ~ skew(biomarker_raw[[.x]])),
+                   log10 = map_dbl(protein_cols, ~ 
+                                     skew(log10(biomarker_raw[[.x]]))))
+
+skew_tbl %>%
+  pivot_longer(-protein, names_to = 'scale', values_to = 'skewness') %>%
+  group_by(scale) %>%
+  summarize(median_skew = median(skewness),
+            pct_skew_gt_1 = 100 * mean(skewness > 1),
+            pct_abs_skew_lt_0.5 = 100 * mean(abs(skewness) < 0.5)) %>%
+  knitr::kable(digits = 2)
+
+skew_tbl %>%
+  pivot_longer(-protein, names_to = 'scale', values_to = 'skewness') %>%
+  mutate(scale = factor(scale, levels = c('raw', 'log10'))) %>%
+  ggplot(aes(x = skewness, fill = scale)) +
+  geom_histogram(bins = 50, position = 'identity', alpha = 0.6, 
+                 color = 'white') +
+  geom_vline(xintercept = 0, linetype = 'dashed') +
+  labs(title = paste0('Skewness of each protein (', length(protein_cols), 
+                      ' proteins), before and after log'),
+       x = 'sample skewness', y = 'number of proteins') +
+  theme_minimal()
+```
+
+## Scale differences between proteins
+
+```{r scale-range, echo = FALSE}
+protein_medians <- tibble(protein = protein_cols,
+                          median_raw = map_dbl(protein_cols,
+                                               ~ median(biomarker_raw[[.x]], 
+                                                        na.rm = TRUE)))
+
+ggplot(protein_medians, aes(x = median_raw)) +
+  geom_histogram(bins = 40, fill = 'grey40', color = 'white') +
+  scale_x_log10() +
+  labs(title = 'Median raw level of each protein (log-scaled x axis)',
+       x = 'median raw level', y = 'number of proteins') +
+  theme_minimal()
+```
+
+
+## Major Takeaways
+
+```{r task1-numbers, echo = FALSE}
+med_raw  <- median(skew_tbl$raw)
+med_log  <- median(skew_tbl$log10)
+pct_raw  <- 100 * mean(skew_tbl$raw > 1)
+pct_log  <- 100 * mean(skew_tbl$log10 > 1)
+```
+
+Raw protein levels are strongly right-skewed: the median skewness across proteins is `r round(med_raw, 2)` on the raw scale vs. `r round(med_log, 2)` after a log transform, and `r round(pct_raw)`% of proteins have skewness above 1 on the raw scale vs. `r round(pct_log)`% after the transform. 
+
+A handful of very large values dominate each raw distribution. This is typical of concentration/intensity measurements, where variation is multiplicative (e.g., a fold change) rather than additive. Taking logs turns multiplicative variation into additive variation and pulls in the long right tail, which suits the methods used downstream (t-tests, which assume roughly normal data; logistic regression; and standardization, where the mean and SD would otherwise be inflated by a few extreme values). Proteins also differ in typical level by several orders of magnitude, so a common scale is needed before they can be compared or used jointly, which is handled by centering and scaling.
+
+The log transform does not remove the skew entirely: a sizable share of proteins still have skewness above 1 on the log scale. 
+
+# 2.
+
+Removing the trimming step from `preprocessing.R`, then looking at where values with $|z| > 3$ occur...
+
+```{r untrimmed, echo = FALSE}
+biomarker_untrimmed <- biomarker_raw %>%
+  mutate(across(.cols = all_of(protein_cols),
+                ~ scale(log10(.x))[, 1]))
+
+z_mat <- biomarker_untrimmed %>%
+  select(all_of(protein_cols)) %>%
+  as.matrix()
+
+cutoff <- 3
+
+outlier_counts <- biomarker_untrimmed %>%
+  select(subject, group, ados) %>%
+  mutate(n_obs  = rowSums(!is.na(z_mat)),
+         n_out  = rowSums(abs(z_mat) > cutoff, na.rm = TRUE),
+         n_high = rowSums(z_mat >  cutoff, na.rm = TRUE),
+         n_low  = rowSums(z_mat < -cutoff, na.rm = TRUE),
+         prop_out = n_out / n_obs)
+```
+
+## Overall frequency of outlying values
+
+```{r overall, echo = FALSE}
+tibble(total_values = sum(!is.na(z_mat)),
+       outlying_values = sum(abs(z_mat) > cutoff, na.rm = TRUE),
+       pct_outlying = 100 * outlying_values / total_values,
+       pct_expected_if_normal = 100 * 2 * pnorm(-cutoff)) %>%
+  knitr::kable(digits = 3)
+```
+
+## Outlying values per subject
+
+```{r per-subject-dist, echo = FALSE}
+outlier_counts %>%
+  mutate(bin = cut(n_out,
+                   breaks = c(-Inf, 0, 5, 10, 20, 50, 100, Inf),
+                   labels = c('0', '1-5', '6-10', '11-20', '21-50', '51-100', '>100'))) %>%
+  count(bin, group) %>%
+  pivot_wider(names_from = group, values_from = n, values_fill = 0) %>%
+  knitr::kable(caption = 'Number of subjects by count of outlying values')
+```
+
+```{r per-subject-rank, echo = FALSE}
+outlier_counts %>%
+  arrange(n_out) %>%
+  mutate(rank = row_number()) %>%
+  ggplot(aes(x = rank, y = n_out, color = group)) +
+  geom_point(size = 2) +
+  labs(title = 'Outlying values per subject (subjects sorted by count)',
+       x = 'subject rank', y = 'number of proteins with |z| > 3') +
+  theme_minimal()
+```
+
+```{r top-subjects, echo = FALSE}
+outlier_counts %>%
+  arrange(desc(n_out)) %>%
+  slice_head(n = 10) %>%
+  select(subject, group, ados, n_out, n_high, n_low, prop_out) %>%
+  knitr::kable(digits = 3, caption = 'Ten subjects with the most outlying values')
+```
+
+## Are outlying subjects more common in one group?
+
+```{r group-summary, echo = FALSE}
+outlier_counts %>%
+  group_by(group) %>%
+  summarize(subjects = n(),
+            mean_out = mean(n_out),
+            median_out = median(n_out),
+            sd_out = sd(n_out),
+            max_out = max(n_out),
+            pct_subjects_with_any = 100 * mean(n_out > 0),
+            .groups = 'drop') %>%
+  knitr::kable(digits = 2)
+```
+
+```{r group-boxplot, echo = FALSE}
+ggplot(outlier_counts, aes(x = group, y = n_out + 1, fill = group)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.15, height = 0, alpha = 0.7) +
+  scale_y_log10() +
+  labs(title = 'Outlying values per subject by group',
+       x = NULL, y = 'number of outlying values + 1 (log scale)') +
+  theme_minimal() +
+  theme(legend.position = 'none')
+```
+
+```{r group-tests, include = FALSE}
+# rank-based test on counts (counts are heavily skewed)
+wilcox_out <- wilcox.test(n_out ~ group, data = outlier_counts, exact = FALSE)
+
+# heavy-outlier subjects: more outlying values than the upper-quartile fence of the counts
+fence <- quantile(outlier_counts$n_out, 0.75) + 1.5 * IQR(outlier_counts$n_out)
+outlier_counts <- outlier_counts %>% mutate(heavy = n_out > fence)
+heavy_tab <- table(outlier_counts$group, outlier_counts$heavy)
+fisher_out <- fisher.test(heavy_tab)
+
+list(fence = fence,
+     heavy_by_group = heavy_tab,
+     wilcoxon_p = wilcox_out$p.value,
+     fisher_p = fisher_out$p.value)
+```
+
+## Direction of the outlying values
+
+If a subject's outliers are almost all on one side, that suggests a sample-wide shift (e.g., overall higher or lower signal for that serum sample) rather than many unrelated protein-specific anomalies.
+
+```{r direction, echo = FALSE}
+ggplot(outlier_counts, aes(x = n_low, y = n_high, color = group)) +
+  geom_point(size = 2, alpha = 0.8) +
+  labs(title = 'High vs. low outlying values per subject',
+       x = 'number of proteins with z < -3',
+       y = 'number of proteins with z > 3') +
+  theme_minimal()
+```
+
+## Major Takeaways
+
+```{r task2-numbers, echo = FALSE}
+n_any <- sum(outlier_counts$n_out > 0)
+top5_share <- outlier_counts %>%
+  arrange(desc(n_out)) %>%
+  slice_head(n = 5) %>%
+  summarize(s = sum(n_out)) %>% pull(s) / sum(outlier_counts$n_out)
+```
+
+`r n_any` of `r nrow(outlier_counts)` subjects have at least one outlying value, but the outliers are very unevenly spread: the five subjects with the most outliers account for `r round(100 * top5_share)`% of all outlying values, and the top handful (subjects 154, 108, 9, 121, 52, 77) each have over 100 proteins beyond $|z| > 3$, against a median of about 8 per subject. So the outliers are mostly subject-level, not isolated protein-level blips.
+
+Several of these subjects are almost entirely one-sided (e.g., subject 9 has 126 high and 0 low values; subject 77 has 114 high and 0 low), which points to a sample-wide shift (e.g., overall higher signal for that serum sample) rather than many unrelated protein-specific anomalies. A few (subjects 154, 52) have both many high and many low values.
+
+There is no clear difference between groups. The median count is the same in both (8.5), the TD mean is higher (`r round(mean(outlier_counts$n_out[outlier_counts$group == 'TD']), 1)` vs. `r round(mean(outlier_counts$n_out[outlier_counts$group == 'ASD']), 1)` for ASD) only because of a few extreme subjects, and heavy-outlier subjects are slightly more common in TD (`r heavy_tab['TD', 'TRUE']` of `r sum(heavy_tab['TD', ])` vs. `r heavy_tab['ASD', 'TRUE']` of `r sum(heavy_tab['ASD', ])`). Neither difference is statistically meaningful: Wilcoxon p = `r signif(wilcox_out$p.value, 2)` for the counts and Fisher p = `r signif(fisher_out$p.value, 2)` for heavy-outlier status.
