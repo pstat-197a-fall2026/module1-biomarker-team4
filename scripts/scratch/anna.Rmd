@@ -12,39 +12,79 @@ Repeat the analysis but carry out the entire selection procedure on a training p
 ```{r}
 set.seed(101422)
 
-#biomarker_split_question3 <- initial_split(biomarker_clean, prop = 0.80)
-#biomarker_train_question3 <- training(biomarker_split_question3)
-#biomarker_test_question3 <- testing(biomarker_split_question3)
+biomarker_split_question3 <- biomarker_clean %>%
+  initial_split(prop = 0.8, strata = group)
 
-partitions <- biomarker_clean %>%
-  initial_split(prop = 0.8)
-
-partitions
+biomarker_train_question3 <- training(biomarker_split_question3)
+biomarker_test_question3 <- testing(biomarker_split_question3)
 
 ```
+
+Begin Analysis:
+
+### Multiple Testing
+
+```{r}
+# function to compute tests
+test_fn_question3 <- function(.df){
+  t_test(.df, 
+         formula = level ~ group,
+         order = c('ASD', 'TD'),
+         alternative = 'two-sided',
+         var.equal = F)
+}
+
+ttests_out_question3 <- biomarker_train_question3 %>%
+  # drop ADOS score
+  select(-ados) %>%
+  # arrange in long format
+  pivot_longer(-group, 
+               names_to = 'protein', 
+               values_to = 'level') %>%
+  # nest by protein
+  nest(data = c(level, group)) %>% 
+  # compute t tests
+  mutate(ttest = map(data, test_fn)) %>%
+  unnest(ttest) %>%
+  # sort by p-value
+  arrange(p_value) %>%
+  # multiple testing correction
+  mutate(m = n(),
+         hm = log(m) + 1/(2*m) - digamma(1),
+         rank = row_number(),
+         p.adj = m*hm*p_value/rank)
+
+# select significant proteins
+proteins_s1_question3 <- ttests_out_question3 %>%
+  slice_min(p.adj, n = 10) %>%
+  pull(protein)
+  
+  
+```
+
 
 
 #### Random Forest - Partitioned
 
 ```{r}
-predictors <- biomarker_clean %>%
+predictors_question3 <- biomarker_train_question3 %>%
   select(-c(group, ados))
 
-response <- biomarker_clean %>% pull(group) %>% factor()
+response_question3 <- biomarker_train_question3 %>% pull(group) %>% factor()
 
 # fit RF
-rf_out <- randomForest(x = predictors, 
-                       y = response, 
+rf_out_question3 <- randomForest(x = predictors_question3, 
+                       y = response_question3, 
                        ntree = 1000, 
                        importance = T)
 
 # check errors
-rf_out$confusion
+rf_out_question3$confusion
 
 # compute importance scores
-proteins_s2 <- rf_out$importance %>% 
+proteins_s2_question3 <- rf_out_question3$importance %>% 
   as_tibble() %>%
-  mutate(protein = rownames(rf_out$importance)) %>%
+  mutate(protein = rownames(rf_out_question3$importance)) %>%
   slice_max(MeanDecreaseGini, n = 10) %>%
   pull(protein)
 ```
@@ -62,6 +102,24 @@ testing(partitions) %>%
 ##issue with class still
 ```
 
+```{r}
+results_glm <- testing(partitions) %>%
+  add_predictions(fit, type = "response") %>%
+  mutate(
+    actual_class = factor(class, levels = c(FALSE, TRUE)),
+    predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
+  ) %>%
+  class_metrics(
+    truth = actual_class,
+    estimate = predicted_class, 
+    pred,
+    event_level = "second"
+  )
+
+print(results_glm)
+
+
+```
 
 ## Bullet Point 2: Top Predictive Protiens
 
