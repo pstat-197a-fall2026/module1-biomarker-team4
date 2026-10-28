@@ -91,20 +91,30 @@ proteins_s2_question3 <- rf_out_question3$importance %>%
 
 #### LOGISTIC REGRESSION
 
-```{r}
+Still not working!!!!
 
-testing(partitions) %>%
-  add_predictions(fit) %>%
-  mutate(probs = 1/(1 + exp(-pred))) %>%
-  select(class, pred, probs) %>%
-  head(5)
-
-##issue with class still
-```
 
 ```{r}
-results_glm <- testing(partitions) %>%
-  add_predictions(fit, type = "response") %>%
+proteins_sstar_question3 <- intersect(proteins_s1_question3, proteins_s2_question3)
+
+biomarker_sstar_question3 <- biomarker_train_question3 %>%
+  select(group, any_of(proteins_sstar_question3)) %>%
+  mutate(class = (group == 'ASD')) %>%
+  select(-group)
+
+# fit logistic regression model to training set
+fit_question3 <- glm(class ~ ., 
+           data = biomarker_train_question3, 
+           family = 'binomial')
+
+# evaluate errors on test set
+class_metrics <- metric_set(sensitivity, 
+                            specificity, 
+                            accuracy,
+                            roc_auc)
+
+results_question3 <- biomarker_test_question3 %>%
+  add_predictions(fit_question3, type = "response") %>%
   mutate(
     actual_class = factor(class, levels = c(FALSE, TRUE)),
     predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
@@ -116,10 +126,11 @@ results_glm <- testing(partitions) %>%
     event_level = "second"
   )
 
-print(results_glm)
-
-
 ```
+
+
+
+
 
 ## Bullet Point 2: Top Predictive Protiens
 
@@ -127,16 +138,18 @@ Choose a larger number (more than ten) of top predictive proteins using each sel
 
 #### Multiple Tests with 20 top protiens
 
+Note: back to the selection process with no partitioning
+
 ```{r}
 
 #multiple tests
 
-proteins_s1_3_part2 <- ttests_out_3 %>%
+proteins_s1_question3.2 <- ttests_out %>%
   slice_min(p.adj, n = 20) %>%
   pull(protein)
 
+proteins_s1_question3.2
 
-proteins_s1_3_part2
 
 ```
 
@@ -145,20 +158,23 @@ proteins_s1_3_part2
 ```{r}
 #random forest
 
-proteins_s2_3_part2 <- rf_out_3$importance %>% 
+proteins_s2_question3.2 <- rf_out$importance %>% 
   as_tibble() %>%
   mutate(protein = rownames(rf_out$importance)) %>%
   slice_max(MeanDecreaseGini, n = 20) %>%
   pull(protein)
 
-proteins_s2_3_part2
+proteins_s2_question3.2
 
 ```
 
-#### Logisitc Regression with 40 top protiens
+#### Logisitic Regression with 40 top protiens
+
+Still not working!!!!!
+
 
 ```{r}
-proteins_sstar_question3_part2 <- intersect(proteins_s1_3_part2, proteins_s2_3_part2)
+proteins_sstar_question3.2 <- intersect(proteins_s1_question3.2, proteins_s2_question3.2)
 
 biomarker_sstar_question3_part2 <- biomarker_train_question3 %>%
   select(group, any_of(proteins_sstar_question3_part2)) %>%
@@ -192,9 +208,6 @@ results_part2 <- testing(biomarker_split) %>%
 results_part2
 
 
-
-
-
 ```
 
 
@@ -208,6 +221,14 @@ Use a fuzzy intersection instead of a hard intersection to combine the sets of t
 
 -fuzzy intersection: ANY selection method chose
 
+
+```{r}
+fuzzy <- biomarker_train_question3 %>%
+  full_join(proteins_s2_question3, proteins_s1_question3) %>%
+  as_tibble()
+
+
+```
 
 
 
