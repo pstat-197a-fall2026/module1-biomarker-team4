@@ -27,15 +27,39 @@ partitions
 #### Random Forest - Partitioned
 
 ```{r}
+predictors <- biomarker_clean %>%
+  select(-c(group, ados))
 
+response <- biomarker_clean %>% pull(group) %>% factor()
+
+# fit RF
+rf_out <- randomForest(x = predictors, 
+                       y = response, 
+                       ntree = 1000, 
+                       importance = T)
+
+# check errors
+rf_out$confusion
+
+# compute importance scores
+proteins_s2 <- rf_out$importance %>% 
+  as_tibble() %>%
+  mutate(protein = rownames(rf_out$importance)) %>%
+  slice_max(MeanDecreaseGini, n = 10) %>%
+  pull(protein)
 ```
 
 #### LOGISTIC REGRESSION
 
 ```{r}
-testing(partitions) %>%
-  add_predictions(fit)
 
+testing(partitions) %>%
+  add_predictions(fit) %>%
+  mutate(probs = 1/(1 + exp(-pred))) %>%
+  select(class, pred, probs) %>%
+  head(5)
+
+##issue with class still
 ```
 
 
