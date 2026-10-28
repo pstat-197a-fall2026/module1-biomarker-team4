@@ -1,17 +1,58 @@
 ---
 title: "Miles"
 output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 #Dataset
 
-Write a brief data description, including: how data were obtained; sample characteristics; variables measured; and data preprocessing. This can be largely based on the source paper and should not exceed 1-2 paragraphs.
+Write a brief data description, including: how data were obtained;
+sample characteristics; variables measured; and data preprocessing. This
+can be largely based on the source paper and should not exceed 1-2
+paragraphs.
 
-The data for this assignment were gathered from a group of individuals from the Johnson Center for Child Health and Development in Austin, TX. These findings were published in the since retracted article Hewitson et. al (2021). The sample consists of a total of 154 boys aged 8 months to 8 years, with 76 being diagnosed with autism and 78 being classified as typically developing. The autism (ASD) group had a mean age of 5.6 years (SD of 1.7 years) and the typically developing (TD) group had a mean age of 5.7 years (SD of 2.0 years). The ASD group was professionally assessed using both the Autism Diagnostic Observation Schedule (ADOS) and the Autism Diagnostic Interview–Revised (ADI-R). DSIM-5 criteria was used along with these assessments to reach a clinical diagnosis. ADOS scores were also used as a measure of symptom severity for the ASD group. TD group members were confirmed to have no close lineage with people diagnosed with ASD and were ruled out of having ASD using the ABAS-II assessment. Blood was drawn from all studied indivisuals from both groups and stored in a 3.5 ml Serum Separation Tube before being cooled and shipped to SomaLogic for lab analysis. 
+The data for this assignment were gathered from a group of individuals
+from the Johnson Center for Child Health and Development in Austin, TX.
+These findings were published in the since retracted article Hewitson
+et. al (2021). The sample consists of a total of 154 boys aged 8 months
+to 8 years, with 76 being diagnosed with autism and 78 being classified
+as typically developing. The autism (ASD) group had a mean age of 5.6
+years (SD of 1.7 years) and the typically developing (TD) group had a
+mean age of 5.7 years (SD of 2.0 years). The ASD group was
+professionally assessed using both the Autism Diagnostic Observation
+Schedule (ADOS) and the Autism Diagnostic Interview–Revised (ADI-R).
+DSIM-5 criteria was used along with these assessments to reach a
+clinical diagnosis. ADOS scores were also used as a measure of symptom
+severity for the ASD group. TD group members were confirmed to have no
+close lineage with people diagnosed with ASD and were ruled out of
+having ASD using the ABAS-II assessment. Blood was drawn from all
+studied indivisuals from both groups and stored in a 3.5 ml Serum
+Separation Tube before being cooled and shipped to SomaLogic for lab
+analysis.
 
-  SOMAScan 1.3k was used for analysis and SomaLogic ran the assays for this dataset. 1,317 proteins were examined by the assay. In the paper study, 192 proteins failed to pass quality control measures, but those proteins were still included in our analysis for module 1 using the raw dataset. The protein data was normalized using the log10 transform as well as z-transformation. Any z-transformed values less than -3 or greater than 3 were excluded from the dataset to deal with potential outliers. 
-
+SOMAScan 1.3k was used for analysis and SomaLogic ran the assays for
+this dataset. 1,317 proteins were examined by the assay. In the paper
+study, 192 proteins failed to pass quality control measures, but those
+proteins were still included in our analysis for module 1 using the raw
+dataset. The protein data was normalized using the log10 transform as
+well as z-transformation. Any z-transformed values less than -3 or
+greater than 3 were excluded from the dataset to deal with potential
+outliers.
 
 #Summary of published analysis
 
-Summarize the methodology of the paper in 1-3 paragraphs. You need not explain the methods in depth as we did in class; just indicate what methods were used and how they were combined. If possible, include a diagram that depicts the methodological design. (Quarto has support for GraphViz and Mermaid flowcharts.) Provide key results: the proteins selected for the classifier and the estimated accuracy.
+Summarize the methodology of the paper in 1-3 paragraphs. You need not
+explain the methods in depth as we did in class; just indicate what
+methods were used and how they were combined. If possible, include a
+diagram that depicts the methodological design. (Quarto has support for
+GraphViz and Mermaid flowcharts.) Provide key results: the proteins
+selected for the classifier and the estimated accuracy.
+
+To isolate predictive biomarker candidates from the preprocessed protein profiles, the authors in the paper implemented three different feature selection techniques. First, Random Forest models were trained over 1,000 iterations to rank features based on their average Mean Decrease Gini. Second, two-sample t-tests were conducted between the ASD and TD cohorts to identify proteins with significant differential abundance (high t-test values). Third, correlation coefficients were calculated to assess linear relationships between individual protein levels and ADOS total symptom severity scores (SA + RRB), the proteins here were ranked by the absolute value of their correlation coefficient. The 30 ranked proteins (10 from each respective method) were then selected for downstream panel construction.
+
+The hard intersection across all three methods identified five "core" proteins common to every list: IgD, suPAR, MAPK14, EPHB2, and DERM. Using this 5-protein core as a baseline, the authors used logistic regression to evaluate whether any remaining non-core candidates from the top-10 lists provided additive predictive power. Four additional proteins (ROR1, GI24, eIF-4H, and ARSB) were found to enhance model performance, making a final panel of 9 proteins.
+
+The utility of this 9-protein panel was evaluated using logistic regression across 1,000 random 80/20 train/test splits, with the subject’s ASD or TD group as the output variable. The classifier achieved an estimated area under the receiver operating characteristic curve (AUROC) of 0.860 plus/minus 0.064, with a mean sensitivity of 0.833 plus/minus 0.118 and a mean specificity of 0.846 plus/minus 0.118.
+
