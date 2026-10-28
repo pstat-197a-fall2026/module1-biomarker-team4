@@ -221,12 +221,23 @@ Use a fuzzy intersection instead of a hard intersection to combine the sets of t
 
 -fuzzy intersection: ANY selection method chose
 
+Note: using the partitioned data
+
 
 ```{r}
-fuzzy <- biomarker_train_question3 %>%
-  full_join(proteins_s2_question3, proteins_s1_question3) %>%
-  as_tibble()
 
+proteins_s1_question3_df <- tibble(protein = proteins_s1_question3)
+
+proteins_s2_question3_df <- rf_out_question3$importance %>%
+  as_tibble(rownames = 'protein') %>%
+  slice_max(MeanDecreaseGini, n = 10) %>%
+  select(protein)
+
+#need to add in logisitic regression
+
+fuzzy <- full_join(proteins_s1_question3_df, proteins_s2_question3_df, by = 'protein')
+
+unique(fuzzy)
 
 ```
 
