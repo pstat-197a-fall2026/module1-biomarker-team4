@@ -44,7 +44,7 @@ ttests_out_question3 <- biomarker_train_question3 %>%
   # nest by protein
   nest(data = c(level, group)) %>% 
   # compute t tests
-  mutate(ttest = map(data, test_fn)) %>%
+  mutate(ttest = map(data, test_fn_question3)) %>%
   unnest(ttest) %>%
   # sort by p-value
   arrange(p_value) %>%
@@ -97,14 +97,14 @@ Still not working!!!!
 ```{r}
 proteins_sstar_question3 <- intersect(proteins_s1_question3, proteins_s2_question3)
 
-biomarker_sstar_question3 <- biomarker_train_question3 %>%
+biomarker_sstar_question3_train <- biomarker_train_question3 %>%
   select(group, any_of(proteins_sstar_question3)) %>%
   mutate(class = (group == 'ASD')) %>%
   select(-group)
 
 # fit logistic regression model to training set
 fit_question3 <- glm(class ~ ., 
-           data = biomarker_train_question3, 
+           data = biomarker_sstar_question3_train, 
            family = 'binomial')
 
 # evaluate errors on test set
@@ -113,7 +113,13 @@ class_metrics <- metric_set(sensitivity,
                             accuracy,
                             roc_auc)
 
-results_question3 <- biomarker_test_question3 %>%
+# create dataset with same columns for test set
+biomarker_sstar_question3_test <- biomarker_test_question3 %>%
+  select(group, any_of(proteins_sstar_question3)) %>%
+  mutate(class = (group == 'ASD')) %>%
+  select(-group)
+
+results_question3 <- biomarker_sstar_question3_test %>%
   add_predictions(fit_question3, type = "response") %>%
   mutate(
     actual_class = factor(class, levels = c(FALSE, TRUE)),
@@ -125,7 +131,7 @@ results_question3 <- biomarker_test_question3 %>%
     pred,
     event_level = "second"
   )
-
+results_question3
 ```
 
 
@@ -174,16 +180,16 @@ Still not working!!!!!
 
 
 ```{r}
-proteins_sstar_question3.2 <- intersect(proteins_s1_question3.2, proteins_s2_question3.2)
+proteins_sstar_question3_part2 <- intersect(proteins_s1_question3.2, proteins_s2_question3.2)
 
-biomarker_sstar_question3_part2 <- biomarker_train_question3 %>%
+biomarker_sstar_question3_part2_train <- biomarker_train_question3 %>%
   select(group, any_of(proteins_sstar_question3_part2)) %>%
   mutate(class = (group == 'ASD')) %>%
   select(-group)
 
 # fit logistic regression model to training set
 fit_question3_part2 <- glm(class ~ ., 
-           data = biomarker_sstar_question3_part2, 
+           data = biomarker_sstar_question3_part2_train, 
            family = 'binomial')
 
 # evaluate errors on test set
@@ -192,7 +198,12 @@ class_metrics <- metric_set(sensitivity,
                             accuracy,
                             roc_auc)
 
-results_part2 <- testing(biomarker_split) %>%
+biomarker_sstar_question3_part2_test <- biomarker_test_question3 %>%
+  select(group, any_of(proteins_sstar_question3_part2)) %>%
+  mutate(class = (group == 'ASD')) %>%
+  select(-group)
+
+results_part2 <- biomarker_sstar_question3_part2_test %>%
   add_predictions(fit_question3_part2, type = "response") %>%
   mutate(
     actual_class = factor(class, levels = c(FALSE, TRUE)),
