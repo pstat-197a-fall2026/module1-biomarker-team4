@@ -58,9 +58,18 @@ ttests_out_question3 <- biomarker_train_question3 %>%
 proteins_s1_question3 <- ttests_out_question3 %>%
   slice_min(p.adj, n = 10) %>%
   pull(protein)
-  
+
+proteins_s1_question3  
+
+```
+
+```{r}
+proteins_s1
   
 ```
+
+
+
 
 
 
@@ -89,9 +98,17 @@ proteins_s2_question3 <- rf_out_question3$importance %>%
   pull(protein)
 ```
 
-#### LOGISTIC REGRESSION
+```{r}
 
-Still not working!!!!
+rf_out$confusion
+proteins_s2
+
+```
+
+After repeating the analysis with partitioned data on the Random Forest model, the classification error rate for TD and ASD both decreased slightly with the partitioned data. For TD, the error rate went from 0.2692308 to 0.2258065, and for ASD classification error rate went from 0.2692308 to 0.2258065. 
+
+
+#### Logistic Regression - Partitioned
 
 
 ```{r}
@@ -138,6 +155,8 @@ results_question3
 
 
 
+
+
 ## Bullet Point 2: Top Predictive Protiens
 
 Choose a larger number (more than ten) of top predictive proteins using each selection method:
@@ -175,8 +194,6 @@ proteins_s2_question3.2
 ```
 
 #### Logisitic Regression with 40 top protiens
-
-Still not working!!!!!
 
 
 ```{r}
