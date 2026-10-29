@@ -150,8 +150,10 @@ results_question3 <- biomarker_sstar_question3_test %>%
   )
 results_question3
 ```
-
-
+```{r}
+print(results)
+```
+By evaluating the logistic regression model on the partitioned test set, we can see that the model actually performed worse.  
 
 
 
