@@ -141,6 +141,102 @@ part4_cv_summary <- part4_cv_results %>%
 part4_cv_summary
 ```
 
+# Elijah Ret part
+## 6. Select the best panel size
+```{r}
 
+part4_best <- part4_cv_summary %>%
+  arrange(desc(mean_accuracy), panel_size) %>%
+  slice(1)
 
+part4_best
 
+best_k <- part4_best$panel_size
+
+best_proteins <- part4_ranking %>%
+  slice_head(n = best_k) %>%
+  pull(protein)
+
+best_proteins
+```
+
+## 7. Fit the final model using the training set
+
+```{r}
+final_train <- part4_train %>%
+  select(all_of(best_proteins)) %>%
+  mutate(
+    class = factor(part4_train$group, levels = c("TD", "ASD"))
+  )
+
+final_model <- glm(
+  class ~ .,
+  data = final_train,
+  family = binomial()
+)
+```
+
+## 8. Evaluate on the held-out test set
+
+```{r}
+test_probabilities <- predict(
+  final_model,
+  newdata = part4_test %>% select(all_of(best_proteins)),
+  type = "response"
+)
+
+test_predictions <- factor(
+  ifelse(test_probabilities > 0.5, "ASD", "TD"),
+  levels = c("TD", "ASD")
+)
+
+part4_test_results <- tibble(
+  truth = factor(part4_test$group, levels = c("TD", "ASD")),
+  estimate = test_predictions
+)
+
+part4_test_results %>%
+  accuracy(truth, estimate)
+
+part4_test_results %>%
+  conf_mat(truth, estimate)
+```
+
+## 9. Compare accuracy across panel sizes
+```{r}
+
+ggplot(
+  part4_cv_summary,
+  aes(x = panel_size, y = mean_accuracy)
+) +
+  geom_line() +
+  geom_point(size = 2) +
+  geom_errorbar(
+    aes(
+      ymin = pmax(0, mean_accuracy - sd_accuracy),
+      ymax = pmin(1, mean_accuracy + sd_accuracy)
+    ),
+    width = 0.2
+  ) +
+  labs(
+    title = "Cross-validated accuracy by protein panel size",
+    x = "Number of proteins",
+    y = "Mean cross-validation accuracy"
+  ) +
+  theme_minimal()
+```
+
+## 10. Summarize the selected panel
+```{r}
+tibble(
+  panel_size = length(best_proteins),
+  proteins = paste(best_proteins, collapse = ", "),
+  cv_mean_accuracy = part4_best$mean_accuracy,
+  cv_sd_accuracy = part4_best$sd_accuracy,
+  test_accuracy = accuracy(
+    part4_test_results,
+    truth,
+    estimate
+  )$.estimate
+)
+```
