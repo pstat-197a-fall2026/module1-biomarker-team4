@@ -244,13 +244,15 @@ results_part2
 
 Use a fuzzy intersection instead of a hard intersection to combine the sets of top predictive proteins across selection methods:
 
+Hard Intersection:
 
--hard intersection: protiens that were only selected by every selection method
+```{r}
+hard <- inner_join(proteins_s1_question3_df, proteins_s2_question3_df, by = 'protein')
 
--fuzzy intersection: ANY selection method chose
+hard
+```
 
-Note: using the partitioned data
-
+Fuzzy Intersection:
 
 ```{r}
 
@@ -266,13 +268,7 @@ proteins_s2_question3_df <- rf_out_question3$importance %>%
 fuzzy <- full_join(proteins_s1_question3_df, proteins_s2_question3_df, by = 'protein')
 
 unique(fuzzy)
-
 ```
 
+The list of top selective protiens gathered via hard intersection, returned 6 protiens. The fuzzy intersection modification returned more protiens, returning a list of 15 top predictive protiens. This is because the fuzzy intersection will include any protien that was selected as a top predictive protien from ANY selection method. In contrast, a hard intersection only returns protiens that were selected by every selection method. Note that I performed the fuzzy intersection across selection methods that were partitioned prior to the selection process (i.e. from the models under question 3 bullet point 1).
 
-
-
-
-## Analysis
-
-How are results affected by each modification?
