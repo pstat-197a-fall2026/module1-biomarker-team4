@@ -27,7 +27,9 @@ Write a brief one-paragraph abstract that describes the contents of your write-u
 
 ## Dataset
 
-Write a brief data description, including: how data were obtained; sample characteristics; variables measured; and data preprocessing. This can be largely based on the source paper and should not exceed 1-2 paragraphs.
+The data for this assignment were gathered from a group of individuals from the Johnson Center for Child Health and Development in Austin, TX. These findings were published in the since retracted article Hewitson et. al (2021). The sample consists of a total of 154 boys aged 8 months to 8 years, with 76 being diagnosed with autism and 78 being classified as typically developing. The autism (ASD) group had a mean age of 5.6 years (SD of 1.7 years) and the typically developing (TD) group had a mean age of 5.7 years (SD of 2.0 years). The ASD group was professionally assessed using both the Autism Diagnostic Observation Schedule (ADOS) and the Autism Diagnostic Interview–Revised (ADI-R). DSIM-5 criteria was used along with these assessments to reach a clinical diagnosis. ADOS scores were also used as a measure of symptom severity for the ASD group. TD group members were confirmed to have no close lineage with people diagnosed with ASD and were ruled out of having ASD using the ABAS-II assessment. Blood was drawn from all studied individuals from both groups and stored in a 3.5 ml Serum Separation Tube before being cooled and shipped to SomaLogic for lab analysis.
+
+SOMAScan 1.3k was used for analysis and SomaLogic ran the assays for this dataset. 1,317 proteins were examined by the assay. In the paper study, 192 proteins failed to pass quality control measures, but those proteins were still included in our analysis for module 1 using the raw dataset. The protein data was normalized using the log10 transform as well as z-transformation. Any z-transformed values less than -3 or greater than 3 were excluded from the dataset to deal with potential outliers.
 
 ## Summary of published analysis
 
