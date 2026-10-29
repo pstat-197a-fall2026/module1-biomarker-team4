@@ -6,6 +6,7 @@ test_fn_question3 <- function(.df){
          alternative = 'two-sided',
          var.equal = F)
 }
+set.seed(101422)
 
 ttests_out_question3 <- part4_train %>%
   # drop ADOS score

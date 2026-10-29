@@ -240,3 +240,51 @@ tibble(
   )$.estimate
 )
 ```
+
+## 11. Compare the alternative with the baseline
+
+
+```{r baseline-comparison}
+alternative_metrics <- part4_test_results %>%
+  mutate(prob_asd = test_probabilities) %>%
+  class_metrics(
+    truth = truth,
+    estimate = estimate,
+    prob_asd,
+    event_level = "second"
+  )
+
+part4_comparison <- bind_rows(
+  baseline %>%
+    mutate(
+      model = "Baseline: t-test + random forest intersection",
+      panel_size = length(proteins_sstar_question3)
+    ),
+  alternative_metrics %>%
+    mutate(
+      model = "Alternative: t-test only",
+      panel_size = length(best_proteins)
+    )
+) %>%
+  select(model, panel_size, .metric, .estimate) %>%
+  pivot_wider(names_from = .metric, values_from = .estimate)
+
+knitr::kable(
+  part4_comparison,
+  digits = 3,
+  caption = "Held-out test performance (proportions from 0 to 1)"
+)
+
+baseline_accuracy <- baseline %>%
+  filter(.metric == "accuracy") %>%
+  pull(.estimate)
+
+alternative_accuracy <- alternative_metrics %>%
+  filter(.metric == "accuracy") %>%
+  pull(.estimate)
+
+accuracy_difference_pp <- 100 * (alternative_accuracy - baseline_accuracy)
+protein_reduction <- length(proteins_sstar_question3) - length(best_proteins)
+```
+
+
