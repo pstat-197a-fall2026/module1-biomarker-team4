@@ -83,4 +83,8 @@ Task 3
 
 ### Improved classifier
 
-Task 4
+We tested whether a smaller protein panel could achieve comparable classification performance to the in-class baseline, which used the intersection of t-test and random-forest selections followed by logistic regression. We ranked proteins by t-test p-values using the training data and used five-fold cross-validation to compare panels containing one, two, and three proteins. We selected the panel size with the highest mean cross-validation accuracy, preferring the smaller panel in the event of a tie.
+
+We then fitted a logistic regression model using the selected proteins and evaluated it on the held-out test set. Compared with the baseline, the alternative classifier used 3 proteins instead of 6. Its test accuracy was 0.594, compared with 0.688 for the baseline, a difference of -0.094 percentage points.
+
+This approach, while ultimately slightly worse, provides a simpler alternative to the in-class method. The results indicate whether a smaller panel can maintain or improve classification accuracy on the held-out test set, although further validation on independent data would be needed to establish its reliability.
