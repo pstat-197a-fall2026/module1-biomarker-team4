@@ -16,14 +16,23 @@ execute:
 
 Use this as a template. Keep the headers and remove all other text. In all, your report can be quite short. When it is complete, render and then push changes to your team repository.
 
-```{r}
-# load any other packages and read data here
+```{r analysis-setup, include=FALSE}
+# Run analysis from the repository root so its data paths resolve.
 library(tidyverse)
 library(tidymodels)
 library(randomForest)
 library(modelr)
 library(infer)
-load('../data/biomarker-clean.RData')
+run_from <- function(directory, code) {
+  old_dir <- setwd(directory)
+  on.exit(setwd(old_dir))
+  force(code)
+}
+
+run_from("..", source(
+  "scripts/inclass-analysis-modification.R",
+  local = knitr::knit_global()
+))
 ```
 
 ## Abstract
@@ -617,6 +626,13 @@ In comparison to the original in-class model, the fuzzy model also achieved a hi
 On the basis of the roc_auc and accuracy metrics of all the models included thus far, this model not only outperformed the in-class model , but all of the other modified model when applied to their respective test sets.
 
 ### Improved classifier
+
+```{r part4-analysis, include=FALSE}
+run_from("..", source(
+  "scripts/part4-analysis.R",
+  local = knitr::knit_global()
+))
+```
 
 We tested whether a smaller protein panel could achieve comparable classification performance to the in-class baseline, which used the intersection of t-test and random-forest selections followed by logistic regression. We ranked proteins by t-test p-values using the training data and used five-fold cross-validation to compare panels containing one, two, and three proteins. We selected the panel size with the highest mean cross-validation accuracy, preferring the smaller panel in the event of a tie.
 
