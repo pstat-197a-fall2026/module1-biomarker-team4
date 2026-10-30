@@ -214,7 +214,7 @@ pct_raw  <- 100 * mean(skew_tbl$raw > 1)
 pct_log  <- 100 * mean(skew_tbl$log10 > 1)
 ```
 
-Raw protein levels are strongly right-skewed: the median skewness across proteins is `r round(med_raw, 2)` on the raw scale vs. `r round(med_log, 2)` after a log transform, and `r round(pct_raw)`% of proteins have skewness above 1 on the raw scale vs. `r round(pct_log)`% after the transform. 
+Raw protein levels are strongly right-skewed: the median skewness across proteins is `r round(med_raw, 2)` on the raw scale vs. `r round(med_log, 2)` after a log transform, and `r round(pct_raw)`% of proteins have skewness above 1 on the raw scale vs. `r round(pct_log)`% after the transform.
 
 A handful of very large values dominate each raw distribution. This is typical of concentration/intensity measurements, where variation is multiplicative (e.g., a fold change) rather than additive. Taking logs turns multiplicative variation into additive variation and pulls in the long right tail, which suits the methods used downstream (t-tests, which assume roughly normal data; logistic regression; and standardization, where the mean and SD would otherwise be inflated by a few extreme values). Proteins also differ in typical level by several orders of magnitude, so a common scale is needed before they can be compared or used jointly, which is handled by centering and scaling.
 
