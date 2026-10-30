@@ -141,7 +141,7 @@ part4_cv_summary <- part4_cv_results %>%
 part4_cv_summary
 ```
 
-# Elijah Ret part
+### Elijah Ret part
 ## 6. Select the best panel size
 ```{r}
 
