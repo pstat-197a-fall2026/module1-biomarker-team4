@@ -19,6 +19,10 @@ Use this as a template. Keep the headers and remove all other text. In all, your
 ```{r}
 # load any other packages and read data here
 library(tidyverse)
+library(tidymodels)
+library(randomForest)
+library(modelr)
+library(infer)
 ```
 
 ## Abstract
