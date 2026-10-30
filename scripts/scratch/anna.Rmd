@@ -20,9 +20,11 @@ biomarker_test_question3 <- testing(biomarker_split_question3)
 
 ```
 
-Begin Analysis:
+
 
 ### Multiple Testing
+
+Selecting Protiens from the partitioned data set
 
 ```{r}
 # function to compute tests
@@ -63,17 +65,10 @@ proteins_s1_question3
 
 ```
 
-```{r}
-proteins_s1
-  
-```
 
 
 
-
-
-
-#### Random Forest - Partitioned
+#### Random Forest
 
 ```{r}
 predictors_question3 <- biomarker_train_question3 %>%
@@ -98,18 +93,10 @@ proteins_s2_question3 <- rf_out_question3$importance %>%
   pull(protein)
 ```
 
-```{r}
-
-rf_out$confusion
-proteins_s2
-
-```
-
-After repeating the analysis with partitioned data on the Random Forest model, the classification error rate for TD and ASD both decreased slightly with the partitioned data. For TD, the error rate went from 0.2692308 to 0.2258065, and for ASD classification error rate went from 0.2692308 to 0.2258065. 
 
 
-#### Logistic Regression - Partitioned
 
+#### Logistic Regression
 
 ```{r}
 proteins_sstar_question3 <- intersect(proteins_s1_question3, proteins_s2_question3)
@@ -150,12 +137,14 @@ results_question3 <- biomarker_sstar_question3_test %>%
   )
 results_question3
 ```
+
+Results from non-partitioned analysis (in class anaylsis):
+
+
 ```{r}
+
 print(results)
 ```
-By evaluating the logistic regression model on the partitioned test set, we can see that the model actually performed worse.  
-
-
 
 
 
@@ -195,20 +184,20 @@ proteins_s2_question3.2
 
 ```
 
-#### Logisitic Regression with 40 top protiens
+#### Logistic Regression
 
 
 ```{r}
 proteins_sstar_question3_part2 <- intersect(proteins_s1_question3.2, proteins_s2_question3.2)
 
-biomarker_sstar_question3_part2_train <- biomarker_train_question3 %>%
+biomarker_sstar_question3_part2 <- biomarker_train_question3 %>%
   select(group, any_of(proteins_sstar_question3_part2)) %>%
   mutate(class = (group == 'ASD')) %>%
   select(-group)
 
 # fit logistic regression model to training set
 fit_question3_part2 <- glm(class ~ ., 
-           data = biomarker_sstar_question3_part2_train, 
+           data = biomarker_sstar_question3_part2, 
            family = 'binomial')
 
 # evaluate errors on test set
@@ -222,7 +211,7 @@ biomarker_sstar_question3_part2_test <- biomarker_test_question3 %>%
   mutate(class = (group == 'ASD')) %>%
   select(-group)
 
-results_part2 <- biomarker_sstar_question3_part2_test %>%
+results_question3_part2 <- biomarker_sstar_question3_part2_test %>%
   add_predictions(fit_question3_part2, type = "response") %>%
   mutate(
     actual_class = factor(class, levels = c(FALSE, TRUE)),
@@ -235,7 +224,7 @@ results_part2 <- biomarker_sstar_question3_part2_test %>%
     event_level = "second"
   )
 
-results_part2
+results_question3_part2
 
 
 ```
@@ -246,31 +235,56 @@ results_part2
 
 Use a fuzzy intersection instead of a hard intersection to combine the sets of top predictive proteins across selection methods:
 
-Hard Intersection:
-
-```{r}
-hard <- inner_join(proteins_s1_question3_df, proteins_s2_question3_df, by = 'protein')
-
-hard
-```
-
 Fuzzy Intersection:
 
 ```{r}
+# select subset of interest
 
-proteins_s1_question3_df <- tibble(protein = proteins_s1_question3)
+proteins_sstar_fuzzy <- union(proteins_s1, proteins_s2)
 
-proteins_s2_question3_df <- rf_out_question3$importance %>%
-  as_tibble(rownames = 'protein') %>%
-  slice_max(MeanDecreaseGini, n = 10) %>%
-  select(protein)
+biomarker_sstar_fuzzy <- biomarker_clean %>%
+  select(group, any_of(proteins_sstar_fuzzy)) %>%
+  mutate(class = (group == 'ASD')) %>%
+  select(-group)
 
-#need to add in logisitic regression
+# partition into training and test set
+set.seed(101422)
+biomarker_split_fuzzy <- biomarker_sstar_fuzzy %>%
+  initial_split(prop = 0.8)
 
-fuzzy <- full_join(proteins_s1_question3_df, proteins_s2_question3_df, by = 'protein')
+# fit logistic regression model to training set
+fit_fuzzy <- glm(class ~ ., 
+           data = training(biomarker_split_fuzzy), 
+           family = 'binomial')
 
-unique(fuzzy)
+# evaluate errors on test set
+class_metrics <- metric_set(sensitivity, 
+                            specificity, 
+                            accuracy,
+                            roc_auc)
+
+results_fuzzy <- testing(biomarker_split_fuzzy) %>%
+  add_predictions(fit, type = "response") %>%
+  mutate(
+    actual_class = factor(class, levels = c(FALSE, TRUE)),
+    predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
+  ) %>%
+  class_metrics(
+    truth = actual_class,
+    estimate = predicted_class, 
+    pred,
+    event_level = "second"
+  )
+
+print(results_fuzzy)
+
+
 ```
+
+
+
+
+
 
 The list of top selective protiens gathered via hard intersection, returned 6 protiens. The fuzzy intersection modification returned more protiens, returning a list of 15 top predictive protiens. This is because the fuzzy intersection will include any protien that was selected as a top predictive protien from ANY selection method. In contrast, a hard intersection only returns protiens that were selected by every selection method. Note that I performed the fuzzy intersection across selection methods that were partitioned prior to the selection process (i.e. from the models under question 3 bullet point 1).
 
