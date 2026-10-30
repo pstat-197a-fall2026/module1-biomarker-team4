@@ -71,13 +71,13 @@ flowchart TD
 
 ## Findings
 
-Summarize your findings here. I've included some subheaders in a way that seems natural to me; you can structure this section however you like.
-
 ### Impact of preprocessing and outliers
 
 Tasks 1-2
 
 ### Methodological variations
+
+The following models include methodological variations. The first model introduces a training partition prior to both protien selection and model fitting. The second model modification increases the number of protiens selected as top predictive protiens from the Multiple Testing and the Random Forest selection methods. The final model modifies the method of combining the protiens selected from each selection method, ultimately including all protiens that were selected by any selection method (rather than only choosing the proteins returned by both selection methods).
 
 #### Adding Training Partition (Bullet Point 1)
 
@@ -198,7 +198,7 @@ results_question3 <- biomarker_sstar_question3_test %>%
 results_question3
 ```
 
-We began by partitioning the dataset prior to beginning the selection process, and then repeating the protien selection process, through Multiple Testing and Random Forest, on the training set. Then, by using a hard intersection to consolidate the predictive protiens identified from both the Multiple Testing and the Random Forest, these protiens were used to fit a Logistic Regression classification model. 
+We began by partitioning the dataset prior to beginning the selection process, and then repeating the protien selection process, through Multiple Testing and Random Forest, on the training set. Then, by using a hard intersection to consolidate the predictive protiens identified from both the Multiple Testing and the Random Forest, these protiens were used to fit a Logistic Regression classification model.
 
 The results above summarize how this modified Logistic Regression model fits on the test set from the partitioned dataset. In comparison to the original in-class analysis, where the data was not partitioned into training and testing sets prior to selecting top predictive protiens, this modified model performs worse. The original roc_auc metric was 0.883, whereas the modified model returns an roc_auc of 0.734.
 
@@ -206,10 +206,9 @@ Also, the modified model's accuracy also decreased in comparison to the original
 
 Although adding a partition prior to performing protien selection does not make a huge negative impact in model performance, given the context of the model's goals, a model that is better at predicting diagnoses could have significant impact on a child's life.
 
-
 #### Increase Top Predictive Proteins Modification (Bullet Point 2)
 
-It is important to note this section modifies the original in-class analysis and does not involve the model from the previous step (i.e. there was no partitioning of data into training and test sets before selection the protiens). 
+It is important to note this section modifies the original in-class analysis and does not involve the model from the previous step (i.e. there was no partitioning of data into training and test sets before selection the protiens).
 
 ```{r}
 # Multiple Tests with 20 top protiens - Question 3 Bullet Point 2
@@ -273,16 +272,15 @@ results_question3_part2
 
 Instead of selecting only 10 top predictive protiens from both Multiple Testing and Random Forest, this section selects 20 top predictive protiens from both selection processes. The (hard) intersection of these 40 protiens is the data that the logistic regression model is fit on.
 
-Comapring roc_auc metrics, this model performed better than the original in-class model. This model, having selected from an intersection of more top predcitve protiens, achieved an roc_auc of 0.891 on the test set. The original in-class model achieved an roc_auc of 0.883 on the test set. 
+Comapring roc_auc metrics, this model performed better than the original in-class model. This model, having selected from an intersection of more top predcitve protiens, achieved an roc_auc of 0.891 on the test set. The original in-class model achieved an roc_auc of 0.883 on the test set.
 
-Additionally, this model reached a higher accuracy metric (0.806) compared to the in-class model, which had an accuracy score of 0.774. Both the increase in the roc_auc and accuracy metrics indicate that this modification increased the predictive capability of the logistic regression model. 
+Additionally, this model reached a higher accuracy metric (0.806) compared to the in-class model, which had an accuracy score of 0.774. Both the increase in the roc_auc and accuracy metrics indicate that this modification increased the predictive capability of the logistic regression model.
 
 It is noted that this modification resulted in a smaller sensitivity metric (0.75), comapred to the in-class model, which had a sensitivity metric of 0.812.
 
-
 #### Fuzzy Intersection Modification (Bullet Point 3)
 
-It is important to note this section modifies the original in-class analysis and does not include a partitioning of data into training and test sets. 
+It is important to note this section modifies the original in-class analysis and does not include a partitioning of data into training and test sets.
 
 ```{r}
 # Fuzzy Intersection for selecting subset of interest
@@ -328,13 +326,11 @@ print(results_fuzzy)
 
 By using a fuzzy intersection when combining the top predictive protiens selected from the Multiple Testing and the Random Forest means that all of the protiens are included. This is different from the previous method, hard intersection, which only kept protiens that both selection methods recognized as top predictive protiens. This means protiens that one method identified as important predictors, but not identified by the other, were not included in the data that trained the logistic regression.
 
-This is not the case with a fuzzy intersection, and the model logistic regression trained on the fuzzy intersection of top protiens performed better than the in-class model that used hard intersection. The fuzzy modification model, further referred to as the fuzzy model, achieved an roc_auc of 0.9 when used on the test data. . This is both higher than the roc_auc of the original in-class model and the modified models. 
+This is not the case with a fuzzy intersection, and the model logistic regression trained on the fuzzy intersection of top protiens performed better than the in-class model that used hard intersection. The fuzzy modification model, further referred to as the fuzzy model, achieved an roc_auc of 0.9 when used on the test data. . This is both higher than the roc_auc of the original in-class model and the modified models.
 
-In comparison to the original in-class model, the fuzzy model also achieved a higher accuracy metric when used on the test data. The original model reached an accuracy of 0.774, where as the fuzzy model achieved an accuracy of 0.871. 
+In comparison to the original in-class model, the fuzzy model also achieved a higher accuracy metric when used on the test data. The original model reached an accuracy of 0.774, where as the fuzzy model achieved an accuracy of 0.871.
 
 On the basis of the roc_auc and accuracy metrics of all the models included thus far, this model not only outperformed the in-class model , but all of the other modified model when applied to their respective test sets.
-
-
 
 ### Improved classifier
 
