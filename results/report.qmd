@@ -77,7 +77,7 @@ Tasks 1-2
 
 ### Methodological variations
 
-The following models include methodological variations. The first model introduces a training partition prior to both protien selection and model fitting. The second model modification increases the number of protiens selected as top predictive protiens from the Multiple Testing and the Random Forest selection methods. The final model modifies the method of combining the protiens selected from each selection method, ultimately including all protiens that were selected by any selection method (rather than only choosing the proteins returned by both selection methods).
+The following models include methodological variations. The first model introduces a training partition prior to both protein selection and model fitting. The second model modification increases the number of proteins selected as top predictive proteins from the Multiple Testing and the Random Forest selection methods. The final model modifies the method of combining the proteins selected from each selection method, ultimately including all proteins that were selected by any selection method (rather than only choosing the proteins returned by both selection methods).
 
 #### Adding Training Partition (Bullet Point 1)
 
@@ -198,20 +198,20 @@ results_question3 <- biomarker_sstar_question3_test %>%
 results_question3
 ```
 
-We began by partitioning the dataset prior to beginning the selection process, and then repeating the protien selection process, through Multiple Testing and Random Forest, on the training set. Then, by using a hard intersection to consolidate the predictive protiens identified from both the Multiple Testing and the Random Forest, these protiens were used to fit a Logistic Regression classification model.
+We began by partitioning the dataset prior to beginning the selection process, and then repeating the protein selection process, through Multiple Testing and Random Forest, on the training set. Then, by using a hard intersection to consolidate the predictive proteins identified from both the Multiple Testing and the Random Forest, these proteins were used to fit a Logistic Regression classification model.
 
-The results above summarize how this modified Logistic Regression model fits on the test set from the partitioned dataset. In comparison to the original in-class analysis, where the data was not partitioned into training and testing sets prior to selecting top predictive protiens, this modified model performs worse. The original roc_auc metric was 0.883, whereas the modified model returns an roc_auc of 0.734.
+The results above summarize how this modified Logistic Regression model fits on the test set from the partitioned dataset. In comparison to the original in-class analysis, where the data was not partitioned into training and testing sets prior to selecting top predictive proteins, this modified model performs worse. The original roc_auc metric was 0.883, whereas the modified model returns an roc_auc of 0.734.
 
 Also, the modified model's accuracy also decreased in comparison to the original, in-class analysis. The modified model's accuracy metric reads 0.6875, whereas the original model's accuracy metric was 0.774.
 
-Although adding a partition prior to performing protien selection does not make a huge negative impact in model performance, given the context of the model's goals, a model that is better at predicting diagnoses could have significant impact on a child's life.
+Although adding a partition prior to performing protein selection does not make a huge negative impact in model performance, given the context of the model's goals, a model that is better at predicting diagnoses could have significant impact on a child's life.
 
 #### Increase Top Predictive Proteins Modification (Bullet Point 2)
 
-It is important to note this section modifies the original in-class analysis and does not involve the model from the previous step (i.e. there was no partitioning of data into training and test sets before selection the protiens).
+It is important to note this section modifies the original in-class analysis and does not involve the model from the previous step (i.e. there was no partitioning of data into training and test sets before selection the proteins).
 
 ```{r}
-# Multiple Tests with 20 top protiens - Question 3 Bullet Point 2
+# Multiple Tests with 20 top proteins - Question 3 Bullet Point 2
 
 proteins_s1_question3.2 <- ttests_out %>%
   slice_min(p.adj, n = 20) %>%
@@ -219,7 +219,7 @@ proteins_s1_question3.2 <- ttests_out %>%
 
 proteins_s1_question3.2
 
-# Random Forest with 20 top protiens - Question 3 Bullet Point 2
+# Random Forest with 20 top proteins - Question 3 Bullet Point 2
 
 proteins_s2_question3.2 <- rf_out$importance %>% 
   as_tibble() %>%
@@ -240,12 +240,12 @@ biomarker_sstar_question3_part2 <- biomarker_clean %>%
 
 # partition into training and test set
 set.seed(101422)
-more_protiens_split <- biomarker_sstar_question3_part2 %>%
+more_proteins_split <- biomarker_sstar_question3_part2 %>%
   initial_split(prop = 0.8)
 
 # fit logistic regression model to training set
 fit_question3_part2 <- glm(class ~ ., 
-           data = training(more_protiens_split), 
+           data = training(more_proteins_split), 
            family = 'binomial')
 
 # evaluate errors on test set
@@ -254,7 +254,7 @@ class_metrics <- metric_set(sensitivity,
                             accuracy,
                             roc_auc)
 
-results_question3_part2 <- testing(more_protiens_split) %>%
+results_question3_part2 <- testing(more_proteins_split) %>%
   add_predictions(fit_question3_part2, type = "response") %>%
   mutate(
     actual_class = factor(class, levels = c(FALSE, TRUE)),
@@ -270,9 +270,9 @@ results_question3_part2 <- testing(more_protiens_split) %>%
 results_question3_part2
 ```
 
-Instead of selecting only 10 top predictive protiens from both Multiple Testing and Random Forest, this section selects 20 top predictive protiens from both selection processes. The (hard) intersection of these 40 protiens is the data that the logistic regression model is fit on.
+Instead of selecting only 10 top predictive proteins from both Multiple Testing and Random Forest, this section selects 20 top predictive proteins from both selection processes. The (hard) intersection of these 40 proteins is the data that the logistic regression model is fit on.
 
-Comapring roc_auc metrics, this model performed better than the original in-class model. This model, having selected from an intersection of more top predcitve protiens, achieved an roc_auc of 0.891 on the test set. The original in-class model achieved an roc_auc of 0.883 on the test set.
+Comapring roc_auc metrics, this model performed better than the original in-class model. This model, having selected from an intersection of more top predcitve proteins, achieved an roc_auc of 0.891 on the test set. The original in-class model achieved an roc_auc of 0.883 on the test set.
 
 Additionally, this model reached a higher accuracy metric (0.806) compared to the in-class model, which had an accuracy score of 0.774. Both the increase in the roc_auc and accuracy metrics indicate that this modification increased the predictive capability of the logistic regression model.
 
@@ -324,9 +324,9 @@ results_fuzzy <- testing(biomarker_split_fuzzy) %>%
 print(results_fuzzy)
 ```
 
-By using a fuzzy intersection when combining the top predictive protiens selected from the Multiple Testing and the Random Forest means that all of the protiens are included. This is different from the previous method, hard intersection, which only kept protiens that both selection methods recognized as top predictive protiens. This means protiens that one method identified as important predictors, but not identified by the other, were not included in the data that trained the logistic regression.
+By using a fuzzy intersection when combining the top predictive proteins selected from the Multiple Testing and the Random Forest means that all of the proteins are included. This is different from the previous method, hard intersection, which only kept proteins that both selection methods recognized as top predictive proteins. This means proteins that one method identified as important predictors, but not identified by the other, were not included in the data that trained the logistic regression.
 
-This is not the case with a fuzzy intersection, and the model logistic regression trained on the fuzzy intersection of top protiens performed better than the in-class model that used hard intersection. The fuzzy modification model, further referred to as the fuzzy model, achieved an roc_auc of 0.9 when used on the test data. . This is both higher than the roc_auc of the original in-class model and the modified models.
+This is not the case with a fuzzy intersection, and the model logistic regression trained on the fuzzy intersection of top proteins performed better than the in-class model that used hard intersection. The fuzzy modification model, further referred to as the fuzzy model, achieved an roc_auc of 0.9 when used on the test data. . This is both higher than the roc_auc of the original in-class model and the modified models.
 
 In comparison to the original in-class model, the fuzzy model also achieved a higher accuracy metric when used on the test data. The original model reached an accuracy of 0.774, where as the fuzzy model achieved an accuracy of 0.871.
 
