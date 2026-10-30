@@ -79,7 +79,262 @@ Tasks 1-2
 
 ### Methodological variations
 
-Task 3
+#### Adding Training Partition (Bullet Point 1)
+
+Making the partition:
+
+```{r}
+# Making the Split
+set.seed(101422)
+
+biomarker_split_question3 <- biomarker_clean %>%
+  initial_split(prop = 0.8, strata = group)
+
+biomarker_train_question3 <- training(biomarker_split_question3)
+biomarker_test_question3 <- testing(biomarker_split_question3)
+
+```
+
+Selection and Analysis Process:
+
+```{r}
+# Multiple Testing - Question 1 Bullet Point 1
+
+# function to compute tests
+test_fn_question3 <- function(.df){
+  t_test(.df, 
+         formula = level ~ group,
+         order = c('ASD', 'TD'),
+         alternative = 'two-sided',
+         var.equal = F)
+}
+
+ttests_out_question3 <- biomarker_train_question3 %>%
+  # drop ADOS score
+  select(-ados) %>%
+  # arrange in long format
+  pivot_longer(-group, 
+               names_to = 'protein', 
+               values_to = 'level') %>%
+  # nest by protein
+  nest(data = c(level, group)) %>% 
+  # compute t tests
+  mutate(ttest = map(data, test_fn_question3)) %>%
+  unnest(ttest) %>%
+  # sort by p-value
+  arrange(p_value) %>%
+  # multiple testing correction
+  mutate(m = n(),
+         hm = log(m) + 1/(2*m) - digamma(1),
+         rank = row_number(),
+         p.adj = m*hm*p_value/rank)
+
+# select significant proteins
+proteins_s1_question3 <- ttests_out_question3 %>%
+  slice_min(p.adj, n = 10) %>%
+  pull(protein)
+
+# Random Forest - Question 1 Bullet Point 1
+
+predictors_question3 <- biomarker_train_question3 %>%
+  select(-c(group, ados))
+
+response_question3 <- biomarker_train_question3 %>% pull(group) %>% factor()
+
+# fit RF
+rf_out_question3 <- randomForest(x = predictors_question3, 
+                       y = response_question3, 
+                       ntree = 1000, 
+                       importance = T)
+
+# check errors
+rf_out_question3$confusion
+
+# compute importance scores
+proteins_s2_question3 <- rf_out_question3$importance %>% 
+  as_tibble() %>%
+  mutate(protein = rownames(rf_out_question3$importance)) %>%
+  slice_max(MeanDecreaseGini, n = 10) %>%
+  pull(protein)
+
+# Logistic Regression - Question 3 Bullet Point 1 Model
+
+proteins_sstar_question3 <- intersect(proteins_s1_question3, proteins_s2_question3)
+
+biomarker_sstar_question3_train <- biomarker_train_question3 %>%
+  select(group, any_of(proteins_sstar_question3)) %>%
+  mutate(class = (group == 'ASD')) %>%
+  select(-group)
+
+# fit logistic regression model to training set
+fit_question3 <- glm(class ~ ., 
+           data = biomarker_sstar_question3_train, 
+           family = 'binomial')
+
+# evaluate errors on test set
+class_metrics <- metric_set(sensitivity, 
+                            specificity, 
+                            accuracy,
+                            roc_auc)
+
+# create dataset with same columns for test set
+biomarker_sstar_question3_test <- biomarker_test_question3 %>%
+  select(group, any_of(proteins_sstar_question3)) %>%
+  mutate(class = (group == 'ASD')) %>%
+  select(-group)
+
+results_question3 <- biomarker_sstar_question3_test %>%
+  add_predictions(fit_question3, type = "response") %>%
+  mutate(
+    actual_class = factor(class, levels = c(FALSE, TRUE)),
+    predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
+  ) %>%
+  class_metrics(
+    truth = actual_class,
+    estimate = predicted_class, 
+    pred,
+    event_level = "second"
+  )
+results_question3
+```
+
+We began by partitioning the dataset prior to beginning the selection process, and then repeating the protien selection process, through Multiple Testing and Random Forest, on the training set. Then, by using a hard intersection to consolidate the predictive protiens identified from both the Multiple Testing and the Random Forest, these protiens were used to fit a Logistic Regression classification model. 
+
+The results above summarize how this modified Logistic Regression model fits on the test set from the partitioned dataset. In comparison to the original in-class analysis, where the data was not partitioned into training and testing sets prior to selecting top predictive protiens, this modified model performs worse. The original roc_auc metric was 0.883, whereas the modified model returns an roc_auc of 0.734.
+
+Also, the modified model's accuracy also decreased in comparison to the original, in-class analysis. The modified model's accuracy metric reads 0.6875, whereas the original model's accuracy metric was 0.774.
+
+Although adding a partition prior to performing protien selection does not make a huge negative impact in model performance, given the context of the model's goals, a model that is better at predicting diagnoses could have significant impact on a child's life.
+
+
+#### Increase Top Predictive Proteins Modification (Bullet Point 2)
+
+It is important to note this section modifies the original in-class analysis and does not involve the model from the previous step (i.e. there was no partitioning of data into training and test sets before selection the protiens). 
+
+```{r}
+# Multiple Tests with 20 top protiens - Question 3 Bullet Point 2
+
+proteins_s1_question3.2 <- ttests_out %>%
+  slice_min(p.adj, n = 20) %>%
+  pull(protein)
+
+proteins_s1_question3.2
+
+# Random Forest with 20 top protiens - Question 3 Bullet Point 2
+
+proteins_s2_question3.2 <- rf_out$importance %>% 
+  as_tibble() %>%
+  mutate(protein = rownames(rf_out$importance)) %>%
+  slice_max(MeanDecreaseGini, n = 20) %>%
+  pull(protein)
+
+proteins_s2_question3.2
+
+# Logistic Regression - Question 3 Bullet Point 2
+
+proteins_sstar_question3_part2 <- intersect(proteins_s1_question3.2, proteins_s2_question3.2)
+
+biomarker_sstar_question3_part2 <- biomarker_clean %>%
+  select(group, any_of(proteins_sstar_question3_part2)) %>%
+  mutate(class = (group == 'ASD')) %>%
+  select(-group)
+
+# partition into training and test set
+set.seed(101422)
+more_protiens_split <- biomarker_sstar_question3_part2 %>%
+  initial_split(prop = 0.8)
+
+# fit logistic regression model to training set
+fit_question3_part2 <- glm(class ~ ., 
+           data = training(more_protiens_split), 
+           family = 'binomial')
+
+# evaluate errors on test set
+class_metrics <- metric_set(sensitivity, 
+                            specificity, 
+                            accuracy,
+                            roc_auc)
+
+results_question3_part2 <- testing(more_protiens_split) %>%
+  add_predictions(fit_question3_part2, type = "response") %>%
+  mutate(
+    actual_class = factor(class, levels = c(FALSE, TRUE)),
+    predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
+  ) %>%
+  class_metrics(
+    truth = actual_class,
+    estimate = predicted_class,
+    pred,
+    event_level = "second"
+  )
+
+results_question3_part2
+```
+
+Instead of selecting only 10 top predictive protiens from both Multiple Testing and Random Forest, this section selects 20 top predictive protiens from both selection processes. The (hard) intersection of these 40 protiens is the data that the logistic regression model is fit on.
+
+Comapring roc_auc metrics, this model performed better than the original in-class model. This model, having selected from an intersection of more top predcitve protiens, achieved an roc_auc of 0.891 on the test set. The original in-class model achieved an roc_auc of 0.883 on the test set. 
+
+Additionally, this model reached a higher accuracy metric (0.806) compared to the in-class model, which had an accuracy score of 0.774. Both the increase in the roc_auc and accuracy metrics indicate that this modification increased the predictive capability of the logistic regression model. 
+
+It is noted that this modification resulted in a smaller sensitivity metric (0.75), comapred to the in-class model, which had a sensitivity metric of 0.812.
+
+
+#### Fuzzy Intersection Modification (Bullet Point 3)
+
+It is important to note this section modifies the original in-class analysis and does not include a partitioning of data into training and test sets. 
+
+```{r}
+# Fuzzy Intersection for selecting subset of interest
+
+proteins_sstar_fuzzy <- union(proteins_s1, proteins_s2)
+
+biomarker_sstar_fuzzy <- biomarker_clean %>%
+  select(group, any_of(proteins_sstar_fuzzy)) %>%
+  mutate(class = (group == 'ASD')) %>%
+  select(-group)
+
+# partition into training and test set
+set.seed(101422)
+biomarker_split_fuzzy <- biomarker_sstar_fuzzy %>%
+  initial_split(prop = 0.8)
+
+# fit logistic regression model to training set
+fit_fuzzy <- glm(class ~ ., 
+           data = training(biomarker_split_fuzzy), 
+           family = 'binomial')
+
+# evaluate errors on test set
+class_metrics <- metric_set(sensitivity, 
+                            specificity, 
+                            accuracy,
+                            roc_auc)
+
+results_fuzzy <- testing(biomarker_split_fuzzy) %>%
+  add_predictions(fit, type = "response") %>%
+  mutate(
+    actual_class = factor(class, levels = c(FALSE, TRUE)),
+    predicted_class = factor(pred > 0.5, levels = c(FALSE, TRUE))
+  ) %>%
+  class_metrics(
+    truth = actual_class,
+    estimate = predicted_class, 
+    pred,
+    event_level = "second"
+  )
+
+print(results_fuzzy)
+```
+
+By using a fuzzy intersection when combining the top predictive protiens selected from the Multiple Testing and the Random Forest means that all of the protiens are included. This is different from the previous method, hard intersection, which only kept protiens that both selection methods recognized as top predictive protiens. This means protiens that one method identified as important predictors, but not identified by the other, were not included in the data that trained the logistic regression.
+
+This is not the case with a fuzzy intersection, and the model logistic regression trained on the fuzzy intersection of top protiens performed better than the in-class model that used hard intersection. The fuzzy modification model, further referred to as the fuzzy model, achieved an roc_auc of 0.9 when used on the test data. . This is both higher than the roc_auc of the original in-class model and the modified models. 
+
+In comparison to the original in-class model, the fuzzy model also achieved a higher accuracy metric when used on the test data. The original model reached an accuracy of 0.774, where as the fuzzy model achieved an accuracy of 0.871. 
+
+On the basis of the roc_auc and accuracy metrics of all the models included thus far, this model not only outperformed the in-class model , but all of the other modified model when applied to their respective test sets.
+
+
 
 ### Improved classifier
 
