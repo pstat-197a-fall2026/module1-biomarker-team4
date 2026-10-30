@@ -23,6 +23,7 @@ library(tidymodels)
 library(randomForest)
 library(modelr)
 library(infer)
+load('../data/biomarker-clean.RData')
 ```
 
 ## Abstract
