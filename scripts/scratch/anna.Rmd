@@ -7,7 +7,7 @@ output: html_document
 
 Repeat the analysis but carry out the entire selection procedure on a training partition -- in other words, set aside some testing data at the very beginning and don't use it until you are evaluating accuracy at the very end:
 
-### Making the Split
+#### Making the Split
 
 ```{r}
 set.seed(101422)
@@ -22,7 +22,7 @@ biomarker_test_question3 <- testing(biomarker_split_question3)
 
 
 
-### Multiple Testing
+#### Multiple Testing
 
 Selecting protiens from the partitioned data set:
 
@@ -146,16 +146,13 @@ Also, the modified model's accuracy also decreased in comparison to the original
 Although adding a partition prior to performing protien selection does not make a huge negative impact in model performance, given the context of the model's goals, a model that is better at predicting diagnoses could have significant impact on a child's life.
 
 
+## Bullet Point 2: Top Predictive Proteins
 
-
-
-## Bullet Point 2: Top Predictive Protiens
-
-Choose a larger number (more than ten) of top predictive proteins using each selection method:
+It is important to note this section modifies the original in-class analysis and does not include a partitioning of data into training and test sets. 
 
 #### Multiple Tests with 20 top protiens
 
-Note: back to the selection process with no partitioning
+It is important to note this section modifies the original in-class analysis and does not involve the model from the previous step (i.e. there was no partitioning of data into training and test sets before selection the protiens). 
 
 ```{r}
 
@@ -191,14 +188,19 @@ proteins_s2_question3.2
 ```{r}
 proteins_sstar_question3_part2 <- intersect(proteins_s1_question3.2, proteins_s2_question3.2)
 
-biomarker_sstar_question3_part2 <- biomarker_train_question3 %>%
+biomarker_sstar_question3_part2 <- biomarker_clean %>%
   select(group, any_of(proteins_sstar_question3_part2)) %>%
   mutate(class = (group == 'ASD')) %>%
   select(-group)
 
+# partition into training and test set
+set.seed(101422)
+more_protiens_split <- biomarker_sstar_question3_part2 %>%
+  initial_split(prop = 0.8)
+
 # fit logistic regression model to training set
 fit_question3_part2 <- glm(class ~ ., 
-           data = biomarker_sstar_question3_part2, 
+           data = training(more_protiens_split), 
            family = 'binomial')
 
 # evaluate errors on test set
@@ -207,12 +209,7 @@ class_metrics <- metric_set(sensitivity,
                             accuracy,
                             roc_auc)
 
-biomarker_sstar_question3_part2_test <- biomarker_test_question3 %>%
-  select(group, any_of(proteins_sstar_question3_part2)) %>%
-  mutate(class = (group == 'ASD')) %>%
-  select(-group)
-
-results_question3_part2 <- biomarker_sstar_question3_part2_test %>%
+results_question3_part2 <- testing(more_protiens_split) %>%
   add_predictions(fit_question3_part2, type = "response") %>%
   mutate(
     actual_class = factor(class, levels = c(FALSE, TRUE)),
@@ -230,6 +227,13 @@ results_question3_part2
 
 ```
 
+Instead of selecting only 10 top predictive protiens from both Multiple Testing and Random Forest, this section selects 20 top predictive protiens from both selection processes. The (hard) intersection of these 40 protiens is the data that the logistic regression model is fit on.
+
+Comapring roc_auc metrics, this model performed better than the original in-class model. This model, having selected from an intersection of more top predcitve protiens, achieved an roc_auc of 0.891 on the test set. The original in-class model achieved an roc_auc of 0.883 on the test set. 
+
+Additionally, this model reached a higher accuracy metric (0.806) compared to the in-class model, which had an accuracy score of 0.774. Both the increase in the roc_auc and accuracy metrics indicate that this modification increased the predictive capability of the logistic regression model. 
+
+It is noted that this modification resulted in a smaller sensitivity metric (0.75), comapred to the in-class model, which had a sensitivity metric of 0.812.
 
 
 ## Bullet Point 3: Fuzzy Intersection
@@ -237,6 +241,8 @@ results_question3_part2
 Use a fuzzy intersection instead of a hard intersection to combine the sets of top predictive proteins across selection methods:
 
 Fuzzy Intersection:
+
+It is important to note this section modifies the original in-class analysis and does not include a partitioning of data into training and test sets. 
 
 ```{r}
 # select subset of interest
@@ -282,10 +288,14 @@ print(results_fuzzy)
 
 ```
 
+By using a fuzzy intersection when combining the top predictive protiens selected from the Multiple Testing and the Random Forest means that all of the protiens are included. This is different from the previous method, hard intersection, which only kept protiens that both selection methods recognized as top predictive protiens. This means protiens that one method identified as important predictors, but not identified by the other, were not included in the data that trained the logistic regression.
+
+This is not the case with a fuzzy intersection, and the model logistic regression trained on the fuzzy intersection of top protiens performed better than the in-class model that used hard intersection. The fuzzy modification model, further referred to as the fuzzy model, achieved an roc_auc of 0.9 when used on the test data. . This is both higher than the roc_auc of the original in-class model and the modified models. 
+
+In comparison to the original in-class model, the fuzzy model also achieved a higher accuracy metric when used on the test data. The original model reached an accuracy of 0.774, where as the fuzzy model achieved an accuracy of 0.871. 
+
+On the basis of the roc_auc and accuracy metrics of all the models included thus far, this model not only outperformed the in-class model , but all of the other modified model when applied to their respective test sets.
 
 
 
-
-
-The list of top selective protiens gathered via hard intersection, returned 6 protiens. The fuzzy intersection modification returned more protiens, returning a list of 15 top predictive protiens. This is because the fuzzy intersection will include any protien that was selected as a top predictive protien from ANY selection method. In contrast, a hard intersection only returns protiens that were selected by every selection method. Note that I performed the fuzzy intersection across selection methods that were partitioned prior to the selection process (i.e. from the models under question 3 bullet point 1).
 
