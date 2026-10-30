@@ -627,11 +627,14 @@ On the basis of the roc_auc and accuracy metrics of all the models included thus
 
 ### Improved classifier
 
-```{r part4-analysis, include=FALSE}
-run_from("..", source(
-  "scripts/part4-analysis.R",
-  local = knitr::knit_global()
-))
+```{r part4-analysis, include=TRUE}
+local({
+  old_dir <- setwd("..")
+  on.exit(setwd(old_dir))
+  
+  source("scripts/part4-analysis.R",
+         local = knitr::knit_global())
+})
 ```
 
 We tested whether a smaller protein panel could achieve comparable classification performance to the in-class baseline, which used the intersection of t-test and random-forest selections followed by logistic regression. We ranked proteins by t-test p-values using the training data and used five-fold cross-validation to compare panels containing one, two, and three proteins. We selected the panel size with the highest mean cross-validation accuracy, preferring the smaller panel in the event of a tie.
