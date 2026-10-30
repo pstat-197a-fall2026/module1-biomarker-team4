@@ -5,8 +5,6 @@ output: html_document
 
 ## Bullet Point 1: Training Partitions
 
-Repeat the analysis but carry out the entire selection procedure on a training partition -- in other words, set aside some testing data at the very beginning and don't use it until you are evaluating accuracy at the very end:
-
 #### Making the Split
 
 ```{r}
@@ -19,8 +17,6 @@ biomarker_train_question3 <- training(biomarker_split_question3)
 biomarker_test_question3 <- testing(biomarker_split_question3)
 
 ```
-
-
 
 #### Multiple Testing
 
@@ -63,7 +59,6 @@ proteins_s1_question3 <- ttests_out_question3 %>%
 
 ```
 
-
 #### Random Forest
 
 Selecting from partitioned data set:
@@ -90,9 +85,6 @@ proteins_s2_question3 <- rf_out_question3$importance %>%
   slice_max(MeanDecreaseGini, n = 10) %>%
   pull(protein)
 ```
-
-
-
 
 #### Logistic Regression
 
@@ -184,7 +176,6 @@ proteins_s2_question3.2
 
 #### Logistic Regression
 
-
 ```{r}
 proteins_sstar_question3_part2 <- intersect(proteins_s1_question3.2, proteins_s2_question3.2)
 
@@ -238,11 +229,9 @@ It is noted that this modification resulted in a smaller sensitivity metric (0.7
 
 ## Bullet Point 3: Fuzzy Intersection
 
-Use a fuzzy intersection instead of a hard intersection to combine the sets of top predictive proteins across selection methods:
+It is important to note this section modifies the original in-class analysis and does not include a partitioning of data into training and test sets. 
 
 Fuzzy Intersection:
-
-It is important to note this section modifies the original in-class analysis and does not include a partitioning of data into training and test sets. 
 
 ```{r}
 # select subset of interest
