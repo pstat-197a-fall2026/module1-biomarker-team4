@@ -24,7 +24,7 @@ biomarker_test_question3 <- testing(biomarker_split_question3)
 
 ### Multiple Testing
 
-Selecting Protiens from the partitioned data set
+Selecting protiens from the partitioned data set:
 
 ```{r}
 # function to compute tests
@@ -61,14 +61,12 @@ proteins_s1_question3 <- ttests_out_question3 %>%
   slice_min(p.adj, n = 10) %>%
   pull(protein)
 
-proteins_s1_question3  
-
 ```
 
 
-
-
 #### Random Forest
+
+Selecting from partitioned data set:
 
 ```{r}
 predictors_question3 <- biomarker_train_question3 %>%
@@ -97,6 +95,8 @@ proteins_s2_question3 <- rf_out_question3$importance %>%
 
 
 #### Logistic Regression
+
+Training and Testing Logistic Regression model on (hard) intersection of protiens selected from partitioned data set:
 
 ```{r}
 proteins_sstar_question3 <- intersect(proteins_s1_question3, proteins_s2_question3)
@@ -137,14 +137,15 @@ results_question3 <- biomarker_sstar_question3_test %>%
   )
 results_question3
 ```
+We began by partitioning the dataset prior to beginning the selection process, and then repeating the protien selection process, through Multiple Testing and Random Forest, on the training set. Then, by using a hard intersection to consolidate the predictive protiens identified from both the Multiple Testing and the Random Forest, these protiens were used to fit a Logistic Regression classification model. 
 
-Results from non-partitioned analysis (in class anaylsis):
+The results above summarize how this modified Logistic Regression model fits on the test set from the partitioned dataset. In comparison to the original in-class analysis, where the data was not partitioned into training and testing sets prior to selecting top predictive protiens, this modified model performs worse. The original roc_auc metric was 0.883, whereas the modified model returns an roc_auc of 0.734.
+
+Also, the modified model's accuracy also decreased in comparison to the original, in-class analysis. The modified model's accuracy metric reads 0.6875, whereas the original model's accuracy metric was 0.774.
+
+Although adding a partition prior to performing protien selection does not make a huge negative impact in model performance, given the context of the model's goals, a model that is better at predicting diagnoses could have significant impact on a child's life.
 
 
-```{r}
-
-print(results)
-```
 
 
 
