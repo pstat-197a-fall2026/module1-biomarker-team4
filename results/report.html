@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Miles Reynolds, Anna Calkins, Lily Nishizawa, Elijah Gabriel Ret, Jacob Low">
-<meta name="dcterms.date" content="2026-10-29">
+<meta name="dcterms.date" content="2026-10-30">
 
 <title>Biomarkers of ASD</title>
 <style>
@@ -46,6 +46,35 @@ ul.task-list li input[type="checkbox"] {
 <script src="report_files/libs/quarto-diagram/mermaid-init.js"></script>
 <link href="report_files/libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -75,7 +104,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Updated</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">October 29, 2026</p>
+      <p class="date">October 30, 2026</p>
     </div>
   </div>
   
@@ -87,10 +116,9 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Use this as a template. Keep the headers and remove all other text. In all, your report can be quite short. When it is complete, render and then push changes to your team repository.</p>
 <section id="abstract" class="level2">
 <h2 class="anchored" data-anchor-id="abstract">Abstract</h2>
-<p>Write a brief one-paragraph abstract that describes the contents of your write-up.</p>
+<p>This report explores the sensitivity of the proteomic biomarker discovery pipeline published by Hewitson et al.&nbsp;(2021) for identifying autism spectrum disorder (ASD) in young males. We first examined preprocessing choices, confirming that raw protein measurements exhibited extreme positive skewness that calls for logarithmic transformation, and demonstrating that outlying values (z-score above 3 or below -3) are concentrated within specific subjects across many proteins rather than showing diagnostic group bias. We then evaluated the robustness of the in-class classification methodology under three design modifications: partitioning data prior to feature selection to prevent data leakage, selecting a larger pool of candidate proteins, and combining selected features using a fuzzy intersection. Introducing an initial training partition reduced the test ROC-AUC from 0.883 to 0.734 and accuracy from 0.774 to 0.688, showing optimistic bias in the unpartitioned selection process. On the other hand, expanding the candidate pool and using a fuzzy intersection yielded nominal test performance gains on the evaluated split. Finally, we tested a simpler 3-protein classifier selected through cross-validated t-test rankings, which achieved a test accuracy of 0.594. Overall, our findings demonstrate that biomarker panel performance is highly sensitive to validation partitioning and feature combination rules.</p>
 </section>
 <section id="dataset" class="level2">
 <h2 class="anchored" data-anchor-id="dataset">Dataset</h2>
@@ -146,18 +174,462 @@ Figure&nbsp;1: Methodological workflow for ASD biomarker discovery from Hewitson
 </section>
 <section id="findings" class="level2">
 <h2 class="anchored" data-anchor-id="findings">Findings</h2>
-<p>Summarize your findings here. I’ve included some subheaders in a way that seems natural to me; you can structure this section however you like.</p>
-<section id="impact-of-preprocessing-and-outliers" class="level3">
-<h3 class="anchored" data-anchor-id="impact-of-preprocessing-and-outliers">Impact of preprocessing and outliers</h3>
-<p>Tasks 1-2</p>
+<section id="impact-of-preprocessing" class="level3">
+<h3 class="anchored" data-anchor-id="impact-of-preprocessing">Impact of preprocessing</h3>
+<p>Using the same parsing as <code>preprocessing.R</code>, but without any transformation, scaling, or trimming…</p>
+</section>
+</section>
+<section id="raw-vs.-log-distributions-for-a-random-sample-of-proteins" class="level2">
+<h2 class="anchored" data-anchor-id="raw-vs.-log-distributions-for-a-random-sample-of-proteins">Raw vs.&nbsp;log distributions for a random sample of proteins</h2>
+<p>Looking at the distribution of raw values for a sample of proteins…</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/hist-raw-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/hist-log-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<section id="skewness-across-all-proteins" class="level4">
+<h4 class="anchored" data-anchor-id="skewness-across-all-proteins">Skewness across all proteins</h4>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">scale</th>
+<th style="text-align: right;">median_skew</th>
+<th style="text-align: right;">pct_skew_gt_1</th>
+<th style="text-align: right;">pct_abs_skew_lt_0.5</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">log10</td>
+<td style="text-align: right;">0.84</td>
+<td style="text-align: right;">45.33</td>
+<td style="text-align: right;">31.59</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">raw</td>
+<td style="text-align: right;">2.28</td>
+<td style="text-align: right;">76.08</td>
+<td style="text-align: right;">9.95</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/skewness-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="scale-differences-between-proteins" class="level4">
+<h4 class="anchored" data-anchor-id="scale-differences-between-proteins">Scale differences between proteins</h4>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/scale-range-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="major-takeaways" class="level4">
+<h4 class="anchored" data-anchor-id="major-takeaways">Major Takeaways</h4>
+<p>Raw protein levels are strongly right-skewed: the median skewness across proteins is 2.28 on the raw scale vs.&nbsp;0.84 after a log transform, and 76% of proteins have skewness above 1 on the raw scale vs.&nbsp;45% after the transform.</p>
+<p>A handful of very large values dominate each raw distribution. This is typical of concentration/intensity measurements, where variation is multiplicative (e.g., a fold change) rather than additive. Taking logs turns multiplicative variation into additive variation and pulls in the long right tail, which suits the methods used downstream (t-tests, which assume roughly normal data; logistic regression; and standardization, where the mean and SD would otherwise be inflated by a few extreme values). Proteins also differ in typical level by several orders of magnitude, so a common scale is needed before they can be compared or used jointly, which is handled by centering and scaling.</p>
+<p>The log transform does not remove the skew entirely: a sizable share of proteins still have skewness above 1 on the log scale.</p>
+</section>
+<section id="impact-of-outliers" class="level3">
+<h3 class="anchored" data-anchor-id="impact-of-outliers">Impact of outliers</h3>
+<p>Removing the trimming step from <code>preprocessing.R</code>, then looking at where values with <span class="math inline">\(|z| &gt; 3\)</span> occur…</p>
+<section id="overall-frequency-of-outlying-values" class="level4">
+<h4 class="anchored" data-anchor-id="overall-frequency-of-outlying-values">Overall frequency of outlying values</h4>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;">total_values</th>
+<th style="text-align: right;">outlying_values</th>
+<th style="text-align: right;">pct_outlying</th>
+<th style="text-align: right;">pct_expected_if_normal</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">202818</td>
+<td style="text-align: right;">2379</td>
+<td style="text-align: right;">1.173</td>
+<td style="text-align: right;">0.27</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="outlying-values-per-subject" class="level4">
+<h4 class="anchored" data-anchor-id="outlying-values-per-subject">Outlying values per subject</h4>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Number of subjects by count of outlying values</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">bin</th>
+<th style="text-align: right;">ASD</th>
+<th style="text-align: right;">TD</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">1-5</td>
+<td style="text-align: right;">19</td>
+<td style="text-align: right;">25</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">6-10</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">23</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">11-20</td>
+<td style="text-align: right;">18</td>
+<td style="text-align: right;">16</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">21-50</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">51-100</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">&gt;100</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">4</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/per-subject-rank-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Ten subjects with the most outlying values</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">subject</th>
+<th style="text-align: left;">group</th>
+<th style="text-align: right;">ados</th>
+<th style="text-align: right;">n_out</th>
+<th style="text-align: right;">n_high</th>
+<th style="text-align: right;">n_low</th>
+<th style="text-align: right;">prop_out</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">154</td>
+<td style="text-align: left;">TD</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">157</td>
+<td style="text-align: right;">94</td>
+<td style="text-align: right;">63</td>
+<td style="text-align: right;">0.119</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">108</td>
+<td style="text-align: left;">TD</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">127</td>
+<td style="text-align: right;">111</td>
+<td style="text-align: right;">16</td>
+<td style="text-align: right;">0.096</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">ASD</td>
+<td style="text-align: right;">22</td>
+<td style="text-align: right;">126</td>
+<td style="text-align: right;">126</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.096</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">121</td>
+<td style="text-align: left;">TD</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">122</td>
+<td style="text-align: right;">118</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0.093</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">52</td>
+<td style="text-align: left;">ASD</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">121</td>
+<td style="text-align: right;">62</td>
+<td style="text-align: right;">59</td>
+<td style="text-align: right;">0.092</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">77</td>
+<td style="text-align: left;">TD</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">114</td>
+<td style="text-align: right;">114</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.087</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">147</td>
+<td style="text-align: left;">TD</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">77</td>
+<td style="text-align: right;">77</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.058</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">24</td>
+<td style="text-align: left;">ASD</td>
+<td style="text-align: right;">17</td>
+<td style="text-align: right;">48</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">41</td>
+<td style="text-align: right;">0.036</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">100</td>
+<td style="text-align: left;">TD</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">47</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0.036</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">150</td>
+<td style="text-align: left;">TD</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">47</td>
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.036</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="are-outlying-subjects-more-common-in-one-group" class="level4">
+<h4 class="anchored" data-anchor-id="are-outlying-subjects-more-common-in-one-group">Are outlying subjects more common in one group?</h4>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 15%">
+<col style="width: 9%">
+<col style="width: 11%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">group</th>
+<th style="text-align: right;">subjects</th>
+<th style="text-align: right;">mean_out</th>
+<th style="text-align: right;">median_out</th>
+<th style="text-align: right;">sd_out</th>
+<th style="text-align: right;">max_out</th>
+<th style="text-align: right;">pct_subjects_with_any</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">ASD</td>
+<td style="text-align: right;">76</td>
+<td style="text-align: right;">13.25</td>
+<td style="text-align: right;">8.5</td>
+<td style="text-align: right;">19.82</td>
+<td style="text-align: right;">126</td>
+<td style="text-align: right;">98.68</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">TD</td>
+<td style="text-align: right;">78</td>
+<td style="text-align: right;">17.59</td>
+<td style="text-align: right;">8.5</td>
+<td style="text-align: right;">29.25</td>
+<td style="text-align: right;">157</td>
+<td style="text-align: right;">98.72</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/group-boxplot-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="direction-of-the-outlying-values" class="level4">
+<h4 class="anchored" data-anchor-id="direction-of-the-outlying-values">Direction of the outlying values</h4>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/direction-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="major-takeaways-1" class="level4">
+<h4 class="anchored" data-anchor-id="major-takeaways-1">Major Takeaways</h4>
+<p>152 of 154 subjects have at least one outlying value, but the outliers are very unevenly spread: the five subjects with the most outliers account for 27% of all outlying values, and the top handful (subjects 154, 108, 9, 121, 52, 77) each have over 100 proteins beyond <span class="math inline">\(|z| &gt; 3\)</span>, against a median of about 8 per subject. So the outliers are mostly subject-level, not isolated protein-level blips.</p>
+<p>Several of these subjects are almost entirely one-sided (e.g., subject 9 has 126 high and 0 low values; subject 77 has 114 high and 0 low), which points to a sample-wide shift (e.g., overall higher signal for that serum sample) rather than many unrelated protein-specific anomalies. A few (subjects 154, 52) have both many high and many low values.</p>
+<p>There is no clear difference between groups. The median count is the same in both (8.5), the TD mean is higher (17.6 vs.&nbsp;13.2 for ASD) only because of a few extreme subjects, and heavy-outlier subjects are slightly more common in TD (9 of 78 vs.&nbsp;4 of 76). Neither difference is statistically meaningful: Wilcoxon p = 0.82 for the counts and Fisher p = 0.25 for heavy-outlier status.</p>
+</section>
 </section>
 <section id="methodological-variations" class="level3">
 <h3 class="anchored" data-anchor-id="methodological-variations">Methodological variations</h3>
-<p>Task 3</p>
+<p>The following models include methodological variations. The first model introduces a training partition prior to both protein selection and model fitting. The second model modification increases the number of proteins selected as top predictive proteins from the Multiple Testing and the Random Forest selection methods. The final model modifies the method of combining the proteins selected from each selection method, ultimately including all proteins that were selected by any selection method (rather than only choosing the proteins returned by both selection methods).</p>
+<section id="adding-training-partition-bullet-point-1" class="level4">
+<h4 class="anchored" data-anchor-id="adding-training-partition-bullet-point-1">Adding Training Partition (Bullet Point 1)</h4>
+<p>Making the partition:</p>
+<p>Selection and Analysis Process:</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>    ASD TD class.error
+ASD  41 19   0.3166667
+TD   16 46   0.2580645</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 3
+  .metric     .estimator .estimate
+  &lt;chr&gt;       &lt;chr&gt;          &lt;dbl&gt;
+1 sensitivity binary         0.5  
+2 specificity binary         0.812
+3 accuracy    binary         0.656
+4 roc_auc     binary         0.723</code></pre>
+</div>
+</div>
+<p>We began by partitioning the dataset prior to beginning the selection process, and then repeating the protein selection process, through Multiple Testing and Random Forest, on the training set. Then, by using a hard intersection to consolidate the predictive proteins identified from both the Multiple Testing and the Random Forest, these proteins were used to fit a Logistic Regression classification model.</p>
+<p>The results above summarize how this modified Logistic Regression model fits on the test set from the partitioned dataset. In comparison to the original in-class analysis, where the data was not partitioned into training and testing sets prior to selecting top predictive proteins, this modified model performs worse. The original roc_auc metric was 0.883, whereas the modified model returns an roc_auc of 0.734.</p>
+<p>Also, the modified model’s accuracy also decreased in comparison to the original, in-class analysis. The modified model’s accuracy metric reads 0.6875, whereas the original model’s accuracy metric was 0.774.</p>
+<p>Although adding a partition prior to performing protein selection does not make a huge negative impact in model performance, given the context of the model’s goals, a model that is better at predicting diagnoses could have significant impact on a child’s life.</p>
+</section>
+<section id="increase-top-predictive-proteins-modification-bullet-point-2" class="level4">
+<h4 class="anchored" data-anchor-id="increase-top-predictive-proteins-modification-bullet-point-2">Increase Top Predictive Proteins Modification (Bullet Point 2)</h4>
+<p>It is important to note this section modifies the original in-class analysis and does not involve the model from the previous step (i.e.&nbsp;there was no partitioning of data into training and test sets before selection the proteins).</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "DERM"            "RELT"            "Calcineurin"     "C1QR1"          
+ [5] "MRC2"            "IgD"             "CXCL16, soluble" "PTN"            
+ [9] "FSTL1"           "Cadherin-5"      "MAPK2"           "TGF-b R III"    
+[13] "DAF"             "MMP-2"           "gp130, soluble"  "Notch 1"        
+[17] "MIA"             "ALCAM"           "MATN2"           "ROR1"           </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "DERM"        "IgD"         "TGF-b R III" "MAPK14"      "FSTL1"      
+ [6] "RELT"        "eIF-4H"      "M2-PK"       "SOST"        "ALCAM"      
+[11] "MAPK2"       "CK-MB"       "RET"         "Calcineurin" "TSP4"       
+[16] "PTN"         "ERBB1"       "MATN2"       "Notch 1"     "CSK"        </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 3
+  .metric     .estimator .estimate
+  &lt;chr&gt;       &lt;chr&gt;          &lt;dbl&gt;
+1 sensitivity binary         0.812
+2 specificity binary         0.867
+3 accuracy    binary         0.839
+4 roc_auc     binary         0.946</code></pre>
+</div>
+</div>
+<p>Instead of selecting only 10 top predictive proteins from both Multiple Testing and Random Forest, this section selects 20 top predictive proteins from both selection processes. The (hard) intersection of these 40 proteins is the data that the logistic regression model is fit on.</p>
+<p>Comapring roc_auc metrics, this model performed better than the original in-class model. This model, having selected from an intersection of more top predcitve proteins, achieved an roc_auc of 0.891 on the test set. The original in-class model achieved an roc_auc of 0.883 on the test set.</p>
+<p>Additionally, this model reached a higher accuracy metric (0.806) compared to the in-class model, which had an accuracy score of 0.774. Both the increase in the roc_auc and accuracy metrics indicate that this modification increased the predictive capability of the logistic regression model.</p>
+<p>It is noted that this modification resulted in a smaller sensitivity metric (0.75), comapred to the in-class model, which had a sensitivity metric of 0.812.</p>
+</section>
+<section id="fuzzy-intersection-modification-bullet-point-3" class="level4">
+<h4 class="anchored" data-anchor-id="fuzzy-intersection-modification-bullet-point-3">Fuzzy Intersection Modification (Bullet Point 3)</h4>
+<p>It is important to note this section modifies the original in-class analysis and does not include a partitioning of data into training and test sets.</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 3
+  .metric     .estimator .estimate
+  &lt;chr&gt;       &lt;chr&gt;          &lt;dbl&gt;
+1 sensitivity binary         0.875
+2 specificity binary         0.8  
+3 accuracy    binary         0.839
+4 roc_auc     binary         0.908</code></pre>
+</div>
+</div>
+<p>By using a fuzzy intersection when combining the top predictive proteins selected from the Multiple Testing and the Random Forest means that all of the proteins are included. This is different from the previous method, hard intersection, which only kept proteins that both selection methods recognized as top predictive proteins. This means proteins that one method identified as important predictors, but not identified by the other, were not included in the data that trained the logistic regression.</p>
+<p>This is not the case with a fuzzy intersection, and the model logistic regression trained on the fuzzy intersection of top proteins performed better than the in-class model that used hard intersection. The fuzzy modification model, further referred to as the fuzzy model, achieved an roc_auc of 0.9 when used on the test data. . This is both higher than the roc_auc of the original in-class model and the modified models.</p>
+<p>In comparison to the original in-class model, the fuzzy model also achieved a higher accuracy metric when used on the test data. The original model reached an accuracy of 0.774, where as the fuzzy model achieved an accuracy of 0.871.</p>
+<p>On the basis of the roc_auc and accuracy metrics of all the models included thus far, this model not only outperformed the in-class model , but all of the other modified model when applied to their respective test sets.</p>
+</section>
 </section>
 <section id="improved-classifier" class="level3">
 <h3 class="anchored" data-anchor-id="improved-classifier">Improved classifier</h3>
-<p>Task 4</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 3
+  .metric     .estimator .estimate
+  &lt;chr&gt;       &lt;chr&gt;          &lt;dbl&gt;
+1 sensitivity binary         0.562
+2 specificity binary         0.812
+3 accuracy    binary         0.688
+4 roc_auc     binary         0.715</code></pre>
+</div>
+</div>
+<p>We tested whether a smaller protein panel could achieve comparable classification performance to the in-class baseline, which used the intersection of t-test and random-forest selections followed by logistic regression. We ranked proteins by t-test p-values using the training data and used five-fold cross-validation to compare panels containing one, two, and three proteins. We selected the panel size with the highest mean cross-validation accuracy, preferring the smaller panel in the event of a tie.</p>
+<p>We then fitted a logistic regression model using the selected proteins and evaluated it on the held-out test set. Compared with the baseline, the alternative classifier used 3 proteins instead of 6. Its test accuracy was 0.594, compared with 0.688 for the baseline, a difference of -0.094 percentage points.</p>
+<p>This approach, while ultimately slightly worse, provides a simpler alternative to the in-class method. The results indicate whether a smaller panel can maintain or improve classification accuracy on the held-out test set, although further validation on independent data would be needed to establish its reliability.</p>
 </section>
 </section>
 
